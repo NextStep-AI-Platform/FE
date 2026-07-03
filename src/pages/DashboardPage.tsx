@@ -5,7 +5,7 @@ import { PLAN_LIMITS, ROUTES } from '../constants'
 import { useApp } from '../contexts/AppContext'
 import { aggregateCourses, getQualifyingScans } from '../lib/dashboardInsights'
 import { PICTURE } from '../lib/picture'
-import { formatDateTime, getScoreBarColor, getScoreLabel } from '../lib/utils'
+import { formatDateTime, formatScanDisplayTitle, getScoreBarColor, getScoreLabel } from '../lib/utils'
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Welcome Banner */}
-      <div className="bg-ns-card border border-ns rounded-2xl p-6 relative overflow-hidden">
+      <div className="bg-ns-card border border-ns rounded-2xl p-6 relative overflow-hidden shadow-card">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative z-10">
           <div>
             <h2 className="font-heading text-xl font-bold text-ns-primary mb-1">
@@ -90,13 +90,13 @@ export default function DashboardPage() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Điểm CV gần nhất', value: latestScan ? `${latestScan.overallScore}/100` : '—', icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-          { label: 'Lượt scan còn lại', value: plan.type === 'free' ? `${scansLeft} lượt` : '∞', icon: ScanLine, color: scansLeft <= 1 && plan.type === 'free' ? 'text-yellow-400' : 'text-blue-400', bg: scansLeft <= 1 && plan.type === 'free' ? 'bg-yellow-400/10' : 'bg-blue-400/10' },
-          { label: 'Công ty phù hợp', value: premium ? `${qualifyingScans.length} lượt` : '—', icon: Building2, color: 'text-green-400', bg: 'bg-green-400/10' },
-          { label: 'Khoá học đề xuất', value: premium ? `${aggregatedCourses.length} khoá` : '—', icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-ns-card border border-ns rounded-2xl p-5 card-interactive">
-            <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
+          { label: 'Điểm CV gần nhất', value: latestScan ? `${latestScan.overallScore}/100` : '—', icon: Star, color: 'keep-accent text-yellow-400', bg: 'bg-yellow-400/10', tile: 'stat-icon-tile-yellow' },
+          { label: 'Lượt scan còn lại', value: plan.type === 'free' ? `${scansLeft} lượt` : '∞', icon: ScanLine, color: scansLeft <= 1 && plan.type === 'free' ? 'keep-accent text-yellow-400' : 'keep-accent text-blue-400', bg: scansLeft <= 1 && plan.type === 'free' ? 'bg-yellow-400/10' : 'bg-blue-400/10', tile: scansLeft <= 1 && plan.type === 'free' ? 'stat-icon-tile-yellow' : 'stat-icon-tile-blue' },
+          { label: 'Công ty phù hợp', value: premium ? `${qualifyingScans.length} lượt` : '—', icon: Building2, color: 'keep-accent text-green-400', bg: 'bg-green-400/10', tile: 'stat-icon-tile-green' },
+          { label: 'Khoá học đề xuất', value: premium ? `${aggregatedCourses.length} khoá` : '—', icon: BookOpen, color: 'keep-accent text-purple-400', bg: 'bg-purple-400/10', tile: 'stat-icon-tile-purple' },
+        ].map(({ label, value, icon: Icon, color, bg, tile }) => (
+          <div key={label} className="bg-ns-card border border-ns rounded-2xl p-5 card-interactive dashboard-stat-card">
+            <div className={`w-10 h-10 ${bg} ${tile} stat-icon-tile rounded-xl flex items-center justify-center mb-3`}>
               <Icon size={20} className={color} />
             </div>
             <p className="text-ns-muted text-xs mb-1">{label}</p>
@@ -151,18 +151,18 @@ export default function DashboardPage() {
 
       {/* CV Score Overview */}
       {latestScan && latestScores && scoreInfo && (
-      <div className="bg-ns-card border border-ns rounded-2xl p-6">
+      <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-heading font-semibold text-ns-primary text-lg">Điểm phân tích CV gần nhất</h3>
-          <button onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(latestScan.id))} className="text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer">
+          <button onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(latestScan.id))} className="keep-accent text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer">
             Xem chi tiết <ChevronRight size={14} />
           </button>
         </div>
         <div className="flex flex-col md:flex-row gap-8 items-center">
           <div className="flex-shrink-0 text-center">
-            <div className="w-32 h-32 rounded-full border-8 border-blue-500 flex items-center justify-center bg-ns-page mx-auto">
+            <div className="w-32 h-32 rounded-full border-8 border-blue-500 score-ring-light flex items-center justify-center bg-ns-page mx-auto">
               <div>
-                <span className="font-heading font-bold text-blue-400 text-4xl">{latestScores.overall}</span>
+                <span className="font-heading font-bold keep-accent text-blue-400 text-4xl">{latestScores.overall}</span>
                 <span className="text-ns-faint text-sm">/100</span>
               </div>
             </div>
@@ -184,35 +184,41 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-heading font-semibold text-ns-primary text-lg">Lịch sử phân tích</h3>
-          <button onClick={() => navigate(ROUTES.ANALYSIS)} className="text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer">
+          <button onClick={() => navigate(ROUTES.ANALYSIS)} className="keep-accent text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer">
             Xem tất cả <ChevronRight size={14} />
           </button>
         </div>
         {recentScans.length === 0 ? (
-          <div className="bg-ns-card border border-ns rounded-xl p-8 text-center">
+          <div className="bg-ns-card border border-ns rounded-xl p-8 text-center shadow-card">
             <p className="text-ns-muted text-sm mb-3">Chưa có lần phân tích nào</p>
-            <button onClick={() => navigate('/cv-scan')} className="text-blue-400 text-sm hover:text-blue-300 cursor-pointer">Phân tích CV đầu tiên</button>
+            <button onClick={() => navigate('/cv-scan')} className="keep-accent text-blue-400 text-sm hover:text-blue-300 cursor-pointer">Phân tích CV đầu tiên</button>
           </div>
         ) : (
         <div className="space-y-3">
-          {recentScans.map(scan => (
-            <div key={scan.id} className="bg-ns-card border border-ns rounded-xl px-5 py-4 flex items-center justify-between gap-4 hover:border-blue-500/30 transition-all">
+          {recentScans.map(scan => {
+            const scoreInfo = getScoreLabel(scan.overallScore)
+            return (
+            <div key={scan.id} className="bg-ns-card border border-ns rounded-xl px-5 py-4 flex items-center justify-between gap-4 hover:border-blue-500/30 transition-all scan-history-row">
               <div className="flex items-center gap-3 min-w-0">
-                <FileText size={18} className="text-blue-400 flex-shrink-0" />
+                <div className="w-9 h-9 bg-blue-400/10 stat-icon-tile stat-icon-tile-blue rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText size={16} className="keep-accent text-blue-400" />
+                </div>
                 <div className="min-w-0">
-                  <p className="text-ns-primary text-sm font-medium truncate">{scan.title}</p>
+                  <p className="text-ns-primary text-sm font-medium truncate">{formatScanDisplayTitle(scan.title)}</p>
                   <p className="text-ns-faint text-xs">{formatDateTime(scan.analyzedAt)}</p>
                 </div>
               </div>
-              <span className="hidden sm:block text-ns-muted text-sm flex-shrink-0">{scan.role}</span>
               <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="bg-blue-600/20 text-blue-400 rounded-lg px-3 py-1 text-sm font-semibold">{scan.overallScore}</span>
+                <span className={`rounded-lg px-3 py-1 text-sm font-bold ${scoreInfo.bg} ${scoreInfo.color}`}>
+                  {scan.overallScore}
+                </span>
                 <button onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(scan.id))} className="text-ns-muted hover:text-ns-primary text-xs border border-ns px-3 py-1.5 rounded-lg hover:bg-ns-raised transition cursor-pointer">
                   Xem lại
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
         )}
       </div>
@@ -221,7 +227,7 @@ export default function DashboardPage() {
         <div className="bg-ns-card border border-ns rounded-2xl p-6 relative overflow-hidden shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold text-ns-primary">Công ty phù hợp với bạn</h3>
-            {!premium && <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full flex items-center gap-1"><Lock size={10} /> Premium</span>}
+            {!premium && <span className="text-xs premium-lock-badge px-2 py-1 rounded-full flex items-center gap-1 keep-accent text-yellow-400"><Lock size={10} /> Premium</span>}
           </div>
           {premium ? (
             qualifyingScans.length === 0 ? (
@@ -230,15 +236,15 @@ export default function DashboardPage() {
               <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                 {qualifyingScans.map(item => (
                   <button key={item.scanId} type="button" onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(item.scanId))}
-                    className="w-full flex items-center gap-3 p-3 bg-ns-page rounded-xl hover:border-blue-500/40 border border-transparent transition cursor-pointer text-left">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center flex-shrink-0">
-                      <Building2 size={16} className="text-blue-400" />
+                    className="w-full flex items-center gap-3 p-3 bg-ns-page rounded-xl hover:border-blue-500/40 border border-transparent transition cursor-pointer text-left insight-list-item">
+                    <div className="w-9 h-9 rounded-full bg-green-400/10 stat-icon-tile stat-icon-tile-green flex items-center justify-center flex-shrink-0">
+                      <Building2 size={16} className="keep-accent text-green-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-ns-primary text-sm font-medium truncate">{item.title}</p>
                       <p className="text-ns-faint text-xs truncate">{item.topCompanyName ?? item.company} · {formatDateTime(item.analyzedAt)}</p>
                     </div>
-                    <span className={`text-sm font-semibold ${item.score >= 80 ? 'text-green-400' : 'text-yellow-400'}`}>{item.score}</span>
+                    <span className={`text-sm font-semibold keep-accent ${item.score >= 80 ? 'text-green-400' : 'text-yellow-400'}`}>{item.score}</span>
                   </button>
                 ))}
               </div>
@@ -259,7 +265,7 @@ export default function DashboardPage() {
         <div className="bg-ns-card border border-ns rounded-2xl p-6 relative overflow-hidden shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold text-ns-primary">Khoá học nên học tiếp theo</h3>
-            {!premium && <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full flex items-center gap-1"><Lock size={10} /> Premium</span>}
+            {!premium && <span className="text-xs premium-lock-badge px-2 py-1 rounded-full flex items-center gap-1 keep-accent text-yellow-400"><Lock size={10} /> Premium</span>}
           </div>
           {premium ? (
             aggregatedCourses.length === 0 ? (
@@ -268,17 +274,17 @@ export default function DashboardPage() {
               <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                 {aggregatedCourses.map(c => (
                   <button key={c.url || c.title} type="button" onClick={() => window.open(c.url, '_blank', 'noopener,noreferrer')}
-                    className="w-full p-3 bg-ns-page rounded-xl flex items-start gap-3 hover:border-orange-500/30 border border-transparent transition cursor-pointer text-left">
-                    <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <BookOpen size={14} className="text-orange-400" />
+                    className="w-full p-3 bg-ns-page rounded-xl flex items-start gap-3 hover:border-orange-500/30 border border-transparent transition cursor-pointer text-left insight-list-item">
+                    <div className="w-8 h-8 bg-orange-500/20 stat-icon-tile stat-icon-tile-orange rounded-lg flex items-center justify-center flex-shrink-0">
+                      <BookOpen size={14} className="keep-accent text-orange-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-ns-primary text-sm font-medium line-clamp-2">{c.title}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-xs text-orange-400">{c.platform}</span>
-                        <span className="text-xs text-yellow-400">⭐ {c.rating}</span>
-                        <span className="text-xs text-blue-400">{c.skill}</span>
-                        {c.count > 1 && <span className="text-xs text-purple-400">{c.count}× đề xuất</span>}
+                        <span className="text-xs keep-accent text-orange-400">{c.platform}</span>
+                        <span className="text-xs keep-accent text-yellow-400">⭐ {c.rating}</span>
+                        <span className="text-xs keep-accent text-blue-400">{c.skill}</span>
+                        {c.count > 1 && <span className="text-xs keep-accent text-purple-400">{c.count}× đề xuất</span>}
                       </div>
                     </div>
                     <ExternalLink size={14} className="text-ns-faint flex-shrink-0 mt-1" />

@@ -199,12 +199,20 @@ Function: `generateMockResult(config: ScanConfig, cvInput, jdInput): CVAnalysisR
 | Google demo | success "Demo Google — không cần mật khẩu" |
 | Register OK | success "Đăng ký thành công" + "Vui lòng đăng nhập" |
 | Register fail | error validation message |
-| Upgrade Premium | success "Nâng cấp Premium thành công" |
-| Upgrade VIP | success "Nâng cấp VIP thành công" |
-| Quota exceeded | warning + blur popup "Nâng cấp Premium" trên CV Scan |
+| Upgrade Premium | success "Nâng cấp Premium thành công" · "Đã mở khóa gợi ý công ty phù hợp và khoá học" |
+| Upgrade VIP | success "Nâng cấp VIP thành công" · "5 buổi phỏng vấn AI — vào tab Phỏng vấn AI để bắt đầu" |
+| CV scan quota exceeded | warning "Hết lượt scan miễn phí" · "Nâng cấp Premium để phân tích CV không giới hạn" |
+| CV scan complete | success "Phân tích hoàn tất" · "Coverage Score đã được tạo" |
+| Mock interview start | info "Buổi phỏng vấn đã bắt đầu" · "{n} câu hỏi · vị trí {role}" |
+| Mock interview finish | success "Hoàn tất phỏng vấn" · "Điểm tổng {score}/100 — xem chi tiết trong popup" |
+| Mock interview no quota | error "Hết lượt phỏng vấn" · "Nâng cấp VIP hoặc mua thêm buổi tại trang Nâng cấp gói" |
+| Mock interview exit early | warning "Đã thoát buổi phỏng vấn" · "Lượt đã dùng sẽ không được hoàn lại" |
+| Mock interview continue | info "Sẵn sàng buổi mới" · "Chọn ngành và vị trí bên dưới để luyện tiếp" |
+| Quota exceeded (legacy) | warning + blur popup "Nâng cấp Premium" trên CV Scan |
 | Toggle notification | info "Đã bật/tắt ..." |
-| Delete account | success "Đã xóa tài khoản" |
+| Delete account | success "Đã xóa tài khoản thành công" |
 | Save profile | success "Đã lưu thay đổi" |
+| Logout | info "Đã đăng xuất" |
 | Network mock error | error "Không thể kết nối máy chủ..." |
 
 ---

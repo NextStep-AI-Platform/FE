@@ -11,6 +11,7 @@ import {
   formatDateTime, formatScanDisplayTitle, getMatchColor, getScoreBarColor,
   getScoreLabel,
 } from '../lib/utils'
+import { FormattedText } from '../components/FormattedText'
 import type { DocumentInput } from '../types'
 
 type Tab = 'overview' | 'ats' | 'compatibility' | 'improve' | 'jobs' | 'courses'
@@ -54,9 +55,11 @@ function DocumentPreviewButton({
         : 'Chưa có nội dung'
 
   return (
-    <div className="bg-ns-page border border-ns rounded-xl p-4 flex flex-col h-full min-h-[140px]">
-      <p className="text-ns-muted text-xs font-semibold uppercase mb-2">{label}</p>
-      <p className="text-ns-secondary text-sm flex-1 line-clamp-4">{summary}</p>
+    <div className="bg-ns-page border border-ns rounded-xl p-4 flex flex-col h-[140px] min-w-0 overflow-hidden">
+      <p className="text-ns-muted text-xs font-semibold uppercase mb-2 shrink-0">{label}</p>
+      <p className="text-ns-secondary text-sm flex-1 min-h-0 line-clamp-3 break-all leading-snug" title={summary}>
+        {summary}
+      </p>
       <button
         onClick={onPreview}
         className="mt-3 text-blue-400 text-sm hover:text-blue-300 cursor-pointer text-left"
@@ -118,7 +121,7 @@ export default function AnalysisDetailPage() {
     s === 'high' ? 'Nghiêm trọng' : s === 'medium' ? 'Trung bình' : 'Nhẹ'
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6 animate-page-in">
       <button
         onClick={() => navigate('/analysis')}
         className="flex items-center gap-2 text-ns-muted hover:text-ns-primary text-sm cursor-pointer"
@@ -129,11 +132,11 @@ export default function AnalysisDetailPage() {
       <div className="bg-ns-card border border-ns rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-5 shadow-card">
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <BookOpen size={22} className="text-blue-400" />
+            <BookOpen size={22} className="keep-accent text-blue-400" />
           </div>
           <div className="min-w-0">
             <p className="text-ns-primary font-semibold truncate">{formatScanDisplayTitle(scan.title)}</p>
-            <p className="text-ns-faint text-xs">{result.analyzedRole} · {scan.company} · {formatDateTime(scan.analyzedAt)}</p>
+            <p className="text-ns-faint text-xs">{result.analyzedRole} · {scan.company} · {result.experienceLevel} · {formatDateTime(scan.analyzedAt)}</p>
           </div>
         </div>
         <button
@@ -147,9 +150,9 @@ export default function AnalysisDetailPage() {
       <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card">
         <div className="flex flex-col md:flex-row gap-6 items-center">
           <div className="flex-shrink-0 text-center">
-            <div className="w-36 h-36 rounded-full border-8 border-blue-500 flex items-center justify-center bg-ns-page mx-auto">
+            <div className="w-36 h-36 rounded-full border-8 border-blue-500/80 flex items-center justify-center bg-ns-page mx-auto shadow-inner">
               <div>
-                <span className="font-heading font-bold text-blue-400 text-5xl">{result.scores.overall}</span>
+                <span className={`font-heading font-bold text-5xl keep-accent ${scoreInfo.color}`}>{result.scores.overall}</span>
                 <span className="text-ns-faint text-base">/100</span>
               </div>
             </div>
@@ -197,37 +200,68 @@ export default function AnalysisDetailPage() {
 
       {activeTab === 'overview' && (
         <div className="space-y-5">
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Khả năng ATS', value: result.scores.ats },
-              { label: 'Độ khớp từ khóa', value: result.scores.keyword },
-              { label: 'Phù hợp kinh nghiệm', value: result.scores.experience },
-            ].map(({ label, value }) => {
+              { label: 'Khả năng ATS', value: result.scores.ats, tile: 'metric-tile-ats' },
+              { label: 'Độ khớp từ khóa', value: result.scores.keyword, tile: 'metric-tile-kw' },
+              { label: 'Phù hợp kinh nghiệm', value: result.scores.experience, tile: 'metric-tile-exp' },
+              { label: 'Trình bày CV', value: result.scores.presentation, tile: 'metric-tile-pres' },
+            ].map(({ label, value, tile }) => {
               const info = getScoreLabel(value)
               return (
-                <div key={label} className="bg-ns-card border border-ns rounded-2xl p-5 text-center shadow-card">
-                  <p className="text-ns-muted text-xs mb-3">{label}</p>
-                  <span className="font-heading font-bold text-3xl text-ns-primary">{value}</span>
-                  <span className="text-ns-faint">/100</span>
-                  <div className={`mt-2 inline-block px-3 py-0.5 rounded-full text-xs font-medium ${info.bg} ${info.color}`}>{info.label}</div>
+                <div key={label} className={`metric-tile bg-ns-card border border-ns rounded-2xl p-4 text-center shadow-card ${tile}`}>
+                  <p className="text-ns-muted text-xs mb-2 font-medium">{label}</p>
+                  <span className={`font-heading font-bold text-2xl keep-accent ${info.color}`}>{value}</span>
+                  <span className="text-ns-faint text-sm">/100</span>
+                  <div className={`mt-2 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${info.bg} ${info.color}`}>{info.label}</div>
                 </div>
               )
             })}
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-4 min-w-0">
             <DocumentPreviewButton label="Nội dung CV" doc={scan.cvInput} onPreview={() => openPreview('Nội dung CV', scan.cvInput)} />
             <DocumentPreviewButton label="Nội dung JD" doc={scan.jdInput} onPreview={() => openPreview('Nội dung JD', scan.jdInput)} />
           </div>
+          {result.computedExperience && (
+            <div className="bg-ns-card border border-ns rounded-2xl p-5 shadow-card">
+              <h3 className="font-semibold text-ns-primary mb-3">Kinh nghiệm tự tính từ CV</h3>
+              <p className="text-blue-400 font-semibold text-lg mb-1">{result.computedExperience.label}</p>
+              {result.computedExperience.relevantMonths != null && (
+                <p className="text-ns-muted text-xs mb-4">
+                  KN liên quan JD: <span className="text-purple-400 font-medium">{result.computedExperience.relevantLabel}</span>
+                  {result.computedExperience.relevantNote && (
+                    <span className="block mt-1 text-ns-faint">{result.computedExperience.relevantNote}</span>
+                  )}
+                </p>
+              )}
+              <div className="space-y-2">
+                {result.computedExperience.timeline.map(entry => (
+                  <div key={`${entry.company}-${entry.from}`} className="flex flex-wrap items-center justify-between gap-2 p-3 bg-ns-page rounded-xl text-sm">
+                    <div className="min-w-0">
+                      <p className="text-ns-primary font-medium truncate">{entry.company}</p>
+                      {entry.role && <p className="text-ns-faint text-xs truncate">{entry.role}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-ns-muted">{entry.from} → {entry.to}</p>
+                      <p className="text-blue-400 font-medium">{entry.months} tháng</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === 'ats' && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
-          <div className="bg-ns-card border border-ns rounded-2xl p-6 text-center flex flex-col justify-center shadow-card">
-            <p className="text-ns-muted text-sm mb-2">Điểm ATS</p>
-            <span className="font-heading font-bold text-blue-400 text-6xl">{result.scores.ats}</span>
-            <span className="text-ns-faint">/100</span>
-            <p className="text-ns-muted text-xs mt-4">Mức CV vượt qua hệ thống lọc tự động</p>
+          <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card space-y-4 section-panel">
+            <div className="text-center pb-4 border-b border-ns-sub">
+              <p className="text-ns-muted text-sm mb-2">Điểm ATS</p>
+              <span className="font-heading font-bold keep-accent text-blue-400 text-6xl">{result.scores.ats}</span>
+              <span className="text-ns-faint">/100</span>
+              <p className="text-ns-muted text-xs mt-3">Mức CV vượt qua hệ thống lọc tự động</p>
+            </div>
           </div>
           <div className="bg-ns-card border border-ns rounded-2xl p-6 space-y-3 shadow-card">
             <h3 className="font-heading font-semibold text-ns-primary mb-2">Chi tiết kiểm tra ATS</h3>
@@ -252,10 +286,10 @@ export default function AnalysisDetailPage() {
       {activeTab === 'compatibility' && (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3">
-            <span className="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-xl text-sm font-semibold">
+            <span className="keep-accent bg-blue-600/15 text-blue-400 border border-blue-500/20 px-4 py-2 rounded-xl text-sm font-semibold">
               Điểm từ khóa: {result.scores.keyword}/100
             </span>
-            <span className="bg-purple-600/20 text-purple-400 px-4 py-2 rounded-xl text-sm font-semibold">
+            <span className="keep-accent bg-purple-600/15 text-purple-400 border border-purple-500/20 px-4 py-2 rounded-xl text-sm font-semibold">
               Điểm kinh nghiệm: {result.scores.experience}/100
             </span>
           </div>
@@ -266,7 +300,7 @@ export default function AnalysisDetailPage() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {result.keywords.matched.map(k => (
-                  <span key={k} className="bg-green-600/10 border border-green-500/20 text-green-400 text-sm px-3 py-1 rounded-full">{k}</span>
+                  <span key={k} className="keyword-pill-match bg-green-600/10 border border-green-500/20 text-green-400 text-sm px-3 py-1 rounded-full">{k}</span>
                 ))}
               </div>
             </div>
@@ -276,14 +310,29 @@ export default function AnalysisDetailPage() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {result.keywords.missing.map(k => (
-                  <span key={k} className="bg-red-600/10 border border-red-500/20 text-red-400 text-sm px-3 py-1 rounded-full">{k}</span>
+                  <span key={k} className="keyword-pill-miss bg-red-600/10 border border-red-500/20 text-red-400 text-sm px-3 py-1 rounded-full">{k}</span>
                 ))}
               </div>
             </div>
           </div>
           <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card">
             <h3 className="font-semibold text-ns-primary mb-2">Nhận xét về kinh nghiệm</h3>
-            <p className="text-ns-secondary text-sm leading-relaxed">{result.experienceComment}</p>
+            {result.computedExperience && (
+              <p className="text-ns-muted text-xs mb-3">
+                Tổng tự tính: <span className="keep-accent text-blue-400 font-medium">{result.computedExperience.label}</span>
+                {result.computedExperience.relevantMonths != null && (
+                  <> · KN liên quan JD: <span className="keep-accent text-purple-400 font-medium">{result.computedExperience.relevantLabel}</span></>
+                )}
+              </p>
+            )}
+            {result.jdMinExperienceLabel && (
+              <p className="text-ns-muted text-xs mb-3">
+                Yêu cầu JD tối thiểu: <span className="text-ns-secondary font-medium">{result.jdMinExperienceLabel}</span>
+              </p>
+            )}
+            <p className="text-ns-secondary text-sm leading-relaxed">
+              <FormattedText text={result.experienceComment} />
+            </p>
           </div>
         </div>
       )}

@@ -5,9 +5,10 @@ import { INDUSTRIES, ROLES_BY_INDUSTRY } from '../constants'
 import { useApp } from '../contexts/AppContext'
 import { useToast } from '../contexts/ToastContext'
 import { generateMockResult } from '../data/mockAnalysis'
-import { buildScanTitle, formatDateTime, formatFileSize, validateExperienceRange } from '../lib/utils'
+import { buildScanTitle, formatDateTime, formatFileSize } from '../lib/utils'
+import { validateScanDocuments } from '../lib/cvJdMatch'
 import { ANALYSIS_PROGRESS_STEPS, getAnalysisStepStatus } from '../lib/analysisProgress'
-import type { CVFileRecord,DocumentInput, ScanConfig, ScanRecord } from '../types'
+import type { CVFileRecord, DocumentInput, ExperienceUnit, ScanConfig, ScanRecord } from '../types'
 
 type InputMode = 'file' | 'text'
 
@@ -23,14 +24,19 @@ function DualInputPanel({
   subtitle,
   state,
   onChange,
+  allowTextMode = true,
+  textDisabledHint = 'Phát triển sau',
 }: {
   title: string
   subtitle: string
   state: PanelState
   onChange: (s: PanelState) => void
+  allowTextMode?: boolean
+  textDisabledHint?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const effectiveMode = allowTextMode ? state.mode : 'file'
 
   const handleFile = (file: File | undefined) => {
     if (!file) return
@@ -40,40 +46,60 @@ function DualInputPanel({
   }
 
   return (
-    <div className="bg-ns-card border border-ns rounded-2xl p-5 flex flex-col h-full min-h-[280px] shadow-card animate-slide-up">
-      <h3 className="font-heading font-semibold text-ns-primary mb-1">{title}</h3>
-      <p className="text-ns-faint text-xs mb-4">{subtitle}</p>
+    <div className="bg-ns-card border border-ns rounded-2xl p-5 flex flex-col h-full min-h-0 overflow-hidden shadow-card animate-slide-up">
+      <h3 className="font-heading font-semibold text-ns-primary mb-1 shrink-0">{title}</h3>
+      <p className="text-ns-faint text-xs mb-4 shrink-0">{subtitle}</p>
 
-      <div className="flex bg-ns-page border border-ns rounded-lg p-1 mb-4">
-        {(['file', 'text'] as InputMode[]).map(m => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => onChange({ ...state, mode: m })}
-            className={`flex-1 py-2 rounded-md text-xs font-medium cursor-pointer transition ${
-              state.mode === m ? 'bg-blue-600 text-white' : 'text-ns-muted hover:text-ns-primary'
-            }`}
-          >
-            {m === 'file' ? 'Tải file' : 'Dán nội dung' }
-          </button>
-        ))}
+      <div className="flex bg-ns-page border border-ns rounded-lg p-1 mb-4 shrink-0">
+        {(['file', 'text'] as InputMode[]).map(m => {
+          const isTextTab = m === 'text'
+          const disabled = isTextTab && !allowTextMode
+          return (
+            <button
+              key={m}
+              type="button"
+              disabled={disabled}
+              title={disabled ? textDisabledHint : undefined}
+              onClick={() => {
+                if (disabled) return
+                onChange({ ...state, mode: m })
+              }}
+              className={`flex-1 py-2 rounded-md text-xs font-medium transition relative group ${
+                disabled
+                  ? 'text-ns-faint/50 cursor-not-allowed opacity-60'
+                  : effectiveMode === m
+                    ? 'bg-blue-600 text-white cursor-pointer'
+                    : 'text-ns-muted hover:text-ns-primary cursor-pointer'
+              }`}
+            >
+              {m === 'file' ? 'Tải file' : 'Dán nội dung'}
+              {disabled && (
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-10 hidden group-hover:block whitespace-nowrap rounded-md bg-ns-raised border border-ns px-2 py-1 text-[10px] text-ns-secondary shadow-lg">
+                  {textDisabledHint}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {state.mode === 'file' ? (
+      {effectiveMode === 'file' ? (
         state.file ? (
-          <div className="flex items-center gap-3 p-4 bg-ns-page rounded-xl border border-ns flex-1">
-            <FileText size={20} className="text-blue-400 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-ns-primary text-sm truncate">{state.file.name}</p>
-              <p className="text-ns-faint text-xs">{formatFileSize(state.file.size)}</p>
+          <div className="flex items-start gap-3 p-4 bg-ns-page rounded-xl border border-ns flex-1 min-h-0 overflow-hidden">
+            <FileText size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-ns-primary text-sm truncate" title={state.file.name}>
+                {state.file.name}
+              </p>
+              <p className="text-ns-faint text-xs mt-1">{formatFileSize(state.file.size)}</p>
             </div>
-            <button type="button" onClick={() => onChange({ ...state, file: null })} className="text-ns-faint hover:text-red-400 cursor-pointer">
+            <button type="button" onClick={() => onChange({ ...state, file: null })} className="text-ns-faint hover:text-red-400 cursor-pointer shrink-0">
               <X size={16} />
             </button>
           </div>
         ) : (
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center flex-1 min-h-[220px] flex flex-col items-center justify-center cursor-pointer transition ${
+            className={`border-2 border-dashed rounded-xl p-6 text-center flex-1 min-h-0 flex flex-col items-center justify-center cursor-pointer transition ${
               dragOver ? 'border-blue-500 bg-blue-500/5 animate-pulse-soft' : 'border-ns hover:border-blue-500/50'
             }`}
             onClick={() => inputRef.current?.click()}
@@ -92,7 +118,7 @@ function DualInputPanel({
           value={state.text}
           onChange={e => onChange({ ...state, mode: 'text', text: e.target.value, file: null })}
           placeholder="Dán nội dung vào đây..."
-          className="input-field flex-1 min-h-[220px] resize-none text-sm"
+          className="input-field flex-1 min-h-0 resize-none text-sm overflow-y-auto"
         />
       )}
     </div>
@@ -102,11 +128,11 @@ function DualInputPanel({
 function AnalysisProgressPanel({ progress }: { progress: number }) {
   const steps = ANALYSIS_PROGRESS_STEPS
   return (
-    <div className="bg-ns-card border border-ns rounded-2xl p-5 shadow-card h-full flex flex-col animate-fade-in">
-      <h3 className="font-heading font-semibold text-ns-primary text-sm mb-1">Tiến hành phân tích</h3>
-      <p className="text-ns-faint text-xs mb-5">AI đang xử lý CV của bạn...</p>
+    <div className="bg-ns-card border border-ns rounded-2xl p-5 shadow-card h-full min-h-0 flex flex-col overflow-hidden animate-fade-in">
+      <h3 className="font-heading font-semibold text-ns-primary text-sm mb-1 shrink-0">Tiến hành phân tích</h3>
+      <p className="text-ns-faint text-xs mb-4 shrink-0">AI đang xử lý CV của bạn...</p>
 
-      <div className="mb-6">
+      <div className="mb-4 shrink-0">
         <div className="flex justify-between text-xs mb-2">
           <span className="text-ns-muted">Tiến độ tổng</span>
           <span className="text-blue-400 font-semibold">{Math.round(progress)}%</span>
@@ -119,13 +145,13 @@ function AnalysisProgressPanel({ progress }: { progress: number }) {
         </div>
       </div>
 
-      <ol className="space-y-3 flex-1">
+      <ol className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1 -mr-1">
         {steps.map((label, index) => {
           const status = getAnalysisStepStatus(index, progress, steps.length)
           return (
             <li
               key={label}
-              className={`flex items-start gap-3 p-3 rounded-xl border transition-all duration-300 ${
+              className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all duration-300 ${
                 status === 'done'
                   ? 'border-green-500/30 bg-green-500/5'
                   : status === 'active'
@@ -174,8 +200,8 @@ function AnalysisProgressPanel({ progress }: { progress: number }) {
 function ConfigPanel({
   company, setCompany, industry, setIndustry, industryOther, setIndustryOther,
   role, setRole, roleOther, setRoleOther, roles,
-  expFrom, setExpFrom, expTo, setExpTo,
-  hasCv, onAnalyze,
+  jdMinExpUnit, setJdMinExpUnit, jdMinExpValue, setJdMinExpValue,
+  canStart, onAnalyze,
 }: {
   company: string; setCompany: (v: string) => void
   industry: string; setIndustry: (v: string) => void
@@ -183,57 +209,93 @@ function ConfigPanel({
   role: string; setRole: (v: string) => void
   roleOther: string; setRoleOther: (v: string) => void
   roles: string[]
-  expFrom: string; setExpFrom: (v: string) => void
-  expTo: string; setExpTo: (v: string) => void
-  hasCv: boolean
+  jdMinExpUnit: ExperienceUnit; setJdMinExpUnit: (v: ExperienceUnit) => void
+  jdMinExpValue: string; setJdMinExpValue: (v: string) => void
+  canStart: boolean
   onAnalyze: () => void
 }) {
+  const handleMinExpInput = (raw: string) => {
+    const digits = raw.replace(/\D/g, '')
+    setJdMinExpValue(digits.replace(/^0+(?=\d)/, ''))
+  }
+
   return (
-    <div className="bg-ns-card border border-ns rounded-2xl p-5 space-y-4 shadow-card h-full flex flex-col animate-slide-up">
-      <h3 className="font-heading font-semibold text-ns-primary text-sm">Cấu hình phân tích</h3>
-      <div>
-        <label className="text-ns-secondary text-xs font-medium block mb-1.5">Tên công ty *</label>
-        <input value={company} onChange={e => setCompany(e.target.value)} className="input-field text-sm py-2" placeholder="VD: FPT Software" />
-      </div>
-      <div>
-        <label className="text-ns-secondary text-xs font-medium block mb-1.5">Ngành nghề</label>
-        <div className="relative">
-          <select value={industry} onChange={e => { setIndustry(e.target.value); setRole('') }} className="input-field appearance-none pr-9 cursor-pointer text-sm py-2">
-            <option value="">-- Tùy chọn --</option>
-            {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-            <option value="__other__">Khác...</option>
-          </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ns-faint pointer-events-none" />
+    <div className="bg-ns-card border border-ns rounded-2xl p-5 shadow-card h-full min-h-0 flex flex-col overflow-hidden animate-slide-up">
+      <h3 className="font-heading font-semibold text-ns-primary text-sm shrink-0 mb-4">Cấu hình phân tích</h3>
+      <div className="flex-1 min-h-0 flex flex-col justify-center gap-3.5">
+        <div>
+          <label className="text-ns-secondary text-xs font-medium block mb-1.5">Tên công ty *</label>
+          <input value={company} onChange={e => setCompany(e.target.value)} className="input-field text-sm py-2" placeholder="VD: FPT Software" />
         </div>
-        {industry === '__other__' && (
-          <input value={industryOther} onChange={e => setIndustryOther(e.target.value)} className="input-field mt-2 text-sm py-2" placeholder="Nhập ngành nghề" />
-        )}
-      </div>
-      <div>
-        <label className="text-ns-secondary text-xs font-medium block mb-1.5">Vị trí ứng tuyển</label>
-        <div className="relative">
-          <select value={role} onChange={e => setRole(e.target.value)} className="input-field appearance-none pr-9 cursor-pointer text-sm py-2" disabled={!industry}>
-            <option value="">-- Tùy chọn --</option>
-            {roles.map(r => <option key={r} value={r}>{r}</option>)}
-            <option value="__other__">Khác...</option>
-          </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ns-faint pointer-events-none" />
+        <div>
+          <label className="text-ns-secondary text-xs font-medium block mb-1.5">Ngành nghề</label>
+          <div className="relative">
+            <select value={industry} onChange={e => { setIndustry(e.target.value); setRole('') }} className="input-field appearance-none pr-9 cursor-pointer text-sm py-2">
+              <option value="">-- Tùy chọn --</option>
+              {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+              <option value="__other__">Khác...</option>
+            </select>
+            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ns-faint pointer-events-none" />
+          </div>
+          {industry === '__other__' && (
+            <input value={industryOther} onChange={e => setIndustryOther(e.target.value)} className="input-field mt-2 text-sm py-2" placeholder="Nhập ngành nghề" />
+          )}
         </div>
-        {role === '__other__' && (
-          <input value={roleOther} onChange={e => setRoleOther(e.target.value)} className="input-field mt-2 text-sm py-2" placeholder="Nhập vị trí" />
-        )}
-      </div>
-      <div>
-        <label className="text-ns-secondary text-xs font-medium block mb-1.5">Kinh nghiệm (tùy chọn)</label>
-        <div className="flex flex-nowrap items-center justify-center lg:justify-start lg:gap-3">
-          <span className="text-ns-muted text-xs">Từ</span>
-          <input type="number" min={0} max={50} value={expFrom} onChange={e => setExpFrom(e.target.value)} className="input-field w-16 text-sm py-2 text-center" />
-          <span className="text-ns-muted text-xs">năm · Đến</span>
-          <input type="number" min={0} max={50} value={expTo} onChange={e => setExpTo(e.target.value)} className="input-field w-16 text-sm py-2 text-center" />
-          <span className="text-ns-muted text-xs">năm</span>
+        <div>
+          <label className="text-ns-secondary text-xs font-medium block mb-1.5">Vị trí ứng tuyển *</label>
+          {!industry ? (
+            <input
+              value={roleOther}
+              onChange={e => setRoleOther(e.target.value)}
+              className="input-field text-sm py-2"
+              placeholder="VD: Data Engineer, Business Analyst..."
+            />
+          ) : (
+            <>
+              <div className="relative">
+                <select value={role} onChange={e => setRole(e.target.value)} className="input-field appearance-none pr-9 cursor-pointer text-sm py-2">
+                  <option value="">-- Chọn vị trí --</option>
+                  {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                  <option value="__other__">Khác...</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ns-faint pointer-events-none" />
+              </div>
+              {role === '__other__' && (
+                <input value={roleOther} onChange={e => setRoleOther(e.target.value)} className="input-field mt-2 text-sm py-2" placeholder="Nhập vị trí cụ thể" />
+              )}
+            </>
+          )}
+        </div>
+        <div>
+          <label className="text-ns-secondary text-xs font-medium block mb-1.5">
+            Thời gian kinh nghiệm làm việc tối thiểu
+            <span className="text-ns-faint font-normal"> (tùy chọn)</span>
+          </label>
+          <div className="flex gap-2">
+            <div className="relative w-[88px] shrink-0">
+              <select
+                value={jdMinExpUnit}
+                onChange={e => setJdMinExpUnit(e.target.value as ExperienceUnit)}
+                className="input-field appearance-none pr-7 cursor-pointer text-sm py-2"
+              >
+                <option value="month">Tháng</option>
+                <option value="year">Năm</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-ns-faint pointer-events-none" />
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={jdMinExpValue}
+              onChange={e => handleMinExpInput(e.target.value)}
+              className="input-field flex-1 text-sm py-2"
+              placeholder={jdMinExpUnit === 'year' ? 'VD: 3' : 'VD: 6'}
+            />
+          </div>
         </div>
       </div>
-      <button type="button" onClick={onAnalyze} disabled={!hasCv || !company.trim()} className="w-full btn-primary py-2.5 text-sm mt-auto disabled:opacity-50 disabled:cursor-not-allowed">
+      <button type="button" onClick={onAnalyze} disabled={!canStart} className="w-full btn-primary py-2.5 text-sm shrink-0 mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
         Bắt đầu phân tích
       </button>
     </div>
@@ -252,16 +314,22 @@ export default function CVScanPage() {
   const [industryOther, setIndustryOther] = useState('')
   const [role, setRole] = useState('')
   const [roleOther, setRoleOther] = useState('')
-  const [expFrom, setExpFrom] = useState('')
-  const [expTo, setExpTo] = useState('')
+  const [jdMinExpUnit, setJdMinExpUnit] = useState<ExperienceUnit>('month')
+  const [jdMinExpValue, setJdMinExpValue] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
 
   const quotaBlocked = plan.type === 'free' && !canScan()
   const roles = industry && industry !== '__other__' ? (ROLES_BY_INDUSTRY[industry] ?? []) : []
   const finalIndustry = industry === '__other__' ? industryOther : industry
-  const finalRole = role === '__other__' ? roleOther : role
-  const hasCv = !!(cv.file || cv.text.trim())
+  const resolvedRole = !industry
+    ? roleOther.trim()
+    : role === '__other__'
+      ? roleOther.trim()
+      : role.trim()
+  const hasCv = !!cv.file
+  const hasJd = !!(jd.file || jd.text.trim())
+  const canStart = hasCv && hasJd && company.trim().length > 0 && resolvedRole.length > 0
 
   const buildDocInput = (panel: PanelState):DocumentInput => {
     if (panel.file) {
@@ -277,17 +345,22 @@ export default function CVScanPage() {
   }
 
   const handleAnalyze = () => {
-    if (!hasCv) { toast.error('Thiếu CV', 'Vui lòng tải hoặc dán nội dung CV'); return }
+    if (!hasCv) { toast.error('Thiếu CV', 'Vui lòng tải file CV (PDF/DOCX)'); return }
+    if (!hasJd) { toast.error('Thiếu JD', 'Vui lòng tải file hoặc dán nội dung mô tả công việc (JD)'); return }
     if (!company.trim()) { toast.error('Thiếu tên công ty', 'Vui lòng nhập tên công ty để đặt tên kết quả'); return }
-    if (expFrom || expTo) {
-      const from = Number(expFrom)
-      const to = Number(expTo || expFrom)
-      if (!validateExperienceRange(from, to)) {
-        toast.error('Kinh nghiệm không hợp lệ', 'Đảm bảo số năm hợp lệ và "Đến" ≥ "Từ"')
-        return
-      }
+    if (!resolvedRole) { toast.error('Thiếu vị trí', 'Vui lòng chọn hoặc nhập vị trí ứng tuyển — tên này sẽ ghi vào kết quả quét CV'); return }
+    if (!canScan()) {
+      toast.warning('Hết lượt scan miễn phí', 'Nâng cấp Premium để phân tích CV không giới hạn')
+      return
     }
-    if (!canScan()) return
+
+    const cvInput = buildDocInput(cv)
+    const jdInput = buildDocInput(jd)
+    const docCheck = validateScanDocuments(cvInput, jdInput)
+    if (!docCheck.ok) {
+      toast.error(docCheck.errorTitle ?? 'Tài liệu không hợp lệ', docCheck.errorMessage ?? '')
+      return
+    }
 
     if (cv.file && user) {
       addCVFile({
@@ -313,17 +386,21 @@ export default function CVScanPage() {
       window.clearInterval(stepTimer)
       setProgress(100)
       const config: ScanConfig = {
-        company: company.trim(), industry: finalIndustry || undefined, role: finalRole || undefined,
-        experienceFrom: expFrom ? Number(expFrom) : undefined,
-        experienceTo: expTo ? Number(expTo) : expFrom ? Number(expFrom) : undefined,
+        company: company.trim(),
+        industry: finalIndustry || undefined,
+        role: resolvedRole,
+        ...(jdMinExpValue
+          ? {
+              jdMinExperience: Number(jdMinExpValue),
+              jdMinExperienceUnit: jdMinExpUnit,
+            }
+          : {}),
       }
       const scanId = `scan_${Date.now()}`
-      const cvInput = buildDocInput(cv)
-      const jdInput = buildDocInput(jd)
       const result = generateMockResult(scanId, config, cvInput, jdInput)
       const record: ScanRecord = {
-        id: scanId, userId: user!.id, title: buildScanTitle(finalRole || 'ViTri', company.trim()),
-        role: finalRole || 'Chưa khai báo', company: company.trim(), overallScore: result.scores.overall,
+        id: scanId, userId: user!.id, title: buildScanTitle(resolvedRole, company.trim()),
+        role: resolvedRole, company: company.trim(), overallScore: result.scores.overall,
         analyzedAt: new Date().toISOString(), cvInput, jdInput, config, result,
       }
       addScan(record)
@@ -343,16 +420,23 @@ export default function CVScanPage() {
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-stretch mt-6">
-          <div className="lg:flex-[2] flex flex-col lg:flex-row lg:gap-6 space-y-6 lg:space-y-0">
-            <div className="flex-1 min-h-[300px] flex flex-col">
-              <DualInputPanel title="CV của bạn" subtitle="PDF hoặc DOCX, hoặc dán nội dung" state={cv} onChange={setCv} />
+        <div className="flex flex-col lg:flex-row lg:gap-6 mt-6 lg:h-[580px]">
+          <div className="lg:flex-[2] grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0 h-[580px] lg:h-full">
+            <div className="h-full min-h-0 flex flex-col">
+              <DualInputPanel
+                title="CV của bạn"
+                subtitle="Bắt buộc — tải file PDF hoặc DOCX"
+                state={cv}
+                onChange={setCv}
+                allowTextMode={false}
+                textDisabledHint="Phát triển sau"
+              />
             </div>
-            <div className="flex-1 min-h-[300px] flex flex-col">
-              <DualInputPanel title="Mô tả công việc (JD)" subtitle="Tùy chọn — giúp tăng độ chính xác Coverage Score" state={jd} onChange={setJd} />
+            <div className="h-full min-h-0 flex flex-col">
+              <DualInputPanel title="Mô tả công việc (JD)" subtitle="Bắt buộc — tải file JD hoặc dán nội dung mô tả công việc" state={jd} onChange={setJd} />
             </div>
           </div>
-          <div className="lg:flex-[1] flex flex-col mt-6 lg:mt-0">
+          <div className="lg:flex-[1] h-[580px] lg:h-full min-h-0 flex flex-col mt-6 lg:mt-0">
             {analyzing ? (
               <AnalysisProgressPanel progress={progress} />
             ) : (
@@ -363,9 +447,11 @@ export default function CVScanPage() {
                 role={role} setRole={setRole}
                 roleOther={roleOther} setRoleOther={setRoleOther}
                 roles={roles}
-                expFrom={expFrom} setExpFrom={setExpFrom}
-                expTo={expTo} setExpTo={setExpTo}
-                hasCv={hasCv}
+                jdMinExpUnit={jdMinExpUnit}
+                setJdMinExpUnit={setJdMinExpUnit}
+                jdMinExpValue={jdMinExpValue}
+                setJdMinExpValue={setJdMinExpValue}
+                canStart={canStart}
                 onAnalyze={handleAnalyze}
               />
             )}

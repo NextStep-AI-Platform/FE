@@ -6,6 +6,7 @@ import type {
   AppNotification,
   AppState,
   CVFileRecord,
+  InterviewSessionRecord,
   PlanInfo,
   PlanType,
   ScanRecord,
@@ -22,6 +23,7 @@ interface PersistedState {
   currentUserId: string | null
   scans: ScanRecord[]
   cvFiles: CVFileRecord[]
+  interviews: InterviewSessionRecord[]
   notifications: AppNotification[]
   hasSeenOnboarding: boolean
 }
@@ -89,6 +91,7 @@ function emptyPersisted(): PersistedState {
     currentUserId: null,
     scans: [],
     cvFiles: [],
+    interviews: [],
     notifications: [],
     hasSeenOnboarding: false,
   }
@@ -110,6 +113,7 @@ function migratePersisted(raw: unknown): PersistedState {
     currentUserId: (r.currentUserId as string | null) ?? null,
     scans: (r.scans as ScanRecord[]) ?? [],
     cvFiles: (r.cvFiles as CVFileRecord[]) ?? [],
+    interviews: (r.interviews as InterviewSessionRecord[]) ?? [],
     notifications: (r.notifications as AppNotification[]) ?? [],
     hasSeenOnboarding: Boolean(r.hasSeenOnboarding),
   }
@@ -142,6 +146,7 @@ interface AppContextValue extends AppState {
   markAllNotificationsRead: () => void
   toggleNotificationSetting: (key: string, enabled: boolean) => void
   consumeInterviewSession: () => boolean
+  addInterviewSession: (session: InterviewSessionRecord) => void
   canScan: () => boolean
   scansRemaining: () => number
   isPremium: () => boolean
@@ -295,6 +300,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [persisted.cvFiles, persisted.currentUserId],
   )
 
+  const interviews = useMemo(
+    () => persisted.interviews.filter(i => i.userId === persisted.currentUserId),
+    [persisted.interviews, persisted.currentUserId],
+  )
+
   const plan = useMemo(
     () => getAccountPlan(persisted.accounts, persisted.currentUserId),
     [persisted.accounts, persisted.currentUserId],
@@ -400,6 +410,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }))
   }, [])
 
+  const addInterviewSession = useCallback((session: InterviewSessionRecord) => {
+    setPersisted(prev => ({ ...prev, interviews: [session, ...prev.interviews] }))
+  }, [])
+
   const consumeInterviewSession = useCallback(() => {
     if (plan.type !== 'vip' || plan.interviewSessionsLeft <= 0) return false
     setPersisted(prev => ({
@@ -438,6 +452,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     plan,
     scans,
     cvFiles,
+    interviews,
     notifications: persisted.notifications,
     hasSeenOnboarding: persisted.hasSeenOnboarding,
     login,
@@ -453,6 +468,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     markAllNotificationsRead,
     toggleNotificationSetting,
     consumeInterviewSession,
+    addInterviewSession,
     canScan,
     scansRemaining,
     isPremium,

@@ -12,4 +12,5 @@ export const PICTURE = {
   aboutHero: pictureAsset('about-hero.png'),
   aboutMission: pictureAsset('about-mission.png'),
   authLanding: pictureAsset('auth-landing.png'),
+  userAvatar: (n: number) => pictureAsset(`user-${n}.png`),
 } as const

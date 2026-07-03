@@ -61,6 +61,8 @@ export const ROUTES = {
   PROFILE: '/profile',
 } as const
 
+export const VIP_INTERVIEW_TOTAL = 5
+
 export const PLAN_LIMITS = {
   free: { scansPerMonth: 3, hasCompanyMatch: false, hasCourses: false, hasInterview: false },
   premium: { scansPerMonth: Infinity, hasCompanyMatch: true, hasCourses: true, hasInterview: false },
@@ -68,8 +70,8 @@ export const PLAN_LIMITS = {
 } as const
 
 export const METRIC_TOOLTIPS: Record<string, string> = {
-  overall: 'Tổng hợp mức phù hợp giữa CV và JD qua nhiều tiêu chí (Coverage Score).',
-  ats: 'Khả năng CV được hệ thống tuyển dụng tự động (ATS) đọc và lọc chính xác.',
+  overall: 'Coverage Score tổng hợp: keyword (30%) + kinh nghiệm (30%) + ATS (25%) + trình bày (15%).',
+  ats: 'Điểm ATS tổng hợp: keyword hard skills (38%) + kinh nghiệm/recency (32%) + format parse (22%) + cấu trúc CV (8%). ATS ưu tiên required terms & YOE trước soft skill.',
   keyword: 'Mức CV chứa các từ khóa quan trọng so với JD và ngành nghề mục tiêu.',
   experience: 'Mức kinh nghiệm mô tả trong CV phù hợp với yêu cầu vị trí.',
   presentation: 'Chất lượng trình bày CV: cấu trúc, format và mức độ chuyên nghiệp.',

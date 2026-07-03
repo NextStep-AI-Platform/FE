@@ -27,10 +27,10 @@ export function getScoreBarColor(score: number): string {
 }
 
 export function getScoreLabel(score: number): { label: string; color: string; bg: string } {
-  if (score >= 85) return { label: 'Xuất sắc', color: 'text-green-400', bg: 'bg-green-600/20' }
-  if (score >= 70) return { label: 'Khá tốt', color: 'text-blue-400', bg: 'bg-blue-600/20' }
-  if (score >= 55) return { label: 'Trung bình', color: 'text-yellow-400', bg: 'bg-yellow-600/20' }
-  return { label: 'Cần cải thiện', color: 'text-red-400', bg: 'bg-red-600/20' }
+  if (score >= 85) return { label: 'Xuất sắc', color: 'keep-accent text-green-400', bg: 'bg-green-600/15 border border-green-500/20' }
+  if (score >= 70) return { label: 'Khá tốt', color: 'keep-accent text-blue-400', bg: 'bg-blue-600/15 border border-blue-500/20' }
+  if (score >= 55) return { label: 'Trung bình', color: 'keep-accent text-amber-400', bg: 'bg-amber-500/15 border border-amber-500/20' }
+  return { label: 'Cần cải thiện', color: 'keep-accent text-red-400', bg: 'bg-red-600/15 border border-red-500/20' }
 }
 
 export function getMatchColor(match: number): string {
@@ -92,7 +92,7 @@ export function sanitizeScanTitle(part: string): string {
 }
 
 export function buildScanTitle(role: string, company: string): string {
-  return `CS_${sanitizeScanTitle(role || 'ViTri')}_${sanitizeScanTitle(company)}`
+  return `CS_${sanitizeScanTitle(role)}_${sanitizeScanTitle(company)}`
 }
 
 export function formatScanDisplayTitle(title: string): string {

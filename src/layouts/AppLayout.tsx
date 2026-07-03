@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, BarChart2, Mic, User, Zap,
   Settings, LogOut, Menu, X, Bell, ChevronRight, Sun, Moon,
@@ -26,6 +26,7 @@ const navAccount = [
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user, logout } = useApp()
   const toast = useToast()
@@ -33,6 +34,17 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const isActive = (path: string) => {
     if (path.startsWith('/profile')) return location.pathname === '/profile'
     return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
+
+  const isAccountNavActive = (path: string) => {
+    if (path === '/pricing') return location.pathname === '/pricing'
+    if (path === '/profile?tab=settings') {
+      return location.pathname === '/profile' && searchParams.get('tab') === 'settings'
+    }
+    if (path === '/profile') {
+      return location.pathname === '/profile' && searchParams.get('tab') !== 'settings'
+    }
+    return false
   }
 
   const handleNav = (path: string) => {
@@ -74,18 +86,26 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         ))}
 
         <p className="text-ns-faint text-xs font-semibold uppercase tracking-wider px-3 mt-6 mb-3">Tài khoản</p>
-        {navAccount.map(({ label, icon: Icon, path, highlight }) => (
+        {navAccount.map(({ label, icon: Icon, path, highlight }) => {
+          const active = isAccountNavActive(path)
+          return (
           <button
             key={label}
             onClick={() => handleNav(path)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-              isActive(path) ? 'bg-blue-600/20 text-blue-400' : highlight ? 'text-yellow-400 hover:bg-ns-raised' : 'text-ns-muted hover:bg-ns-raised hover:text-ns-primary'
+              active
+                ? 'bg-blue-600/20 text-blue-400 keep-accent'
+                : highlight
+                  ? 'text-yellow-400 hover:bg-ns-raised'
+                  : 'text-ns-muted hover:bg-ns-raised hover:text-ns-primary'
             }`}
           >
             <Icon size={18} />
             {label}
+            {active && <ChevronRight size={14} className="ml-auto text-blue-400 keep-accent" />}
           </button>
-        ))}
+          )
+        })}
       </nav>
 
       <div className="p-4 border-t border-ns">
@@ -143,7 +163,7 @@ export default function AppLayout() {
     (location.pathname.startsWith('/analysis/') ? 'Chi tiết phân tích' : 'NextStep AI')
 
   const planLabel =
-    plan.type === 'vip' ? 'VIP' : plan.type === 'premium' ? 'Premium' : null
+    plan.type === 'vip' ? 'VIP' : plan.type === 'premium' ? 'Premium' : 'Free'
 
   return (
     <div className="flex h-screen bg-ns-page overflow-hidden">
@@ -170,12 +190,15 @@ export default function AppLayout() {
               <Menu size={20} />
             </button>
             <h1 className="text-ns-primary font-heading font-semibold text-lg">{pageTitle}</h1>
-            {planLabel && (
+            {user && (
               <span className={`hidden sm:inline text-xs font-semibold px-2.5 py-1 rounded-full badge-pill ${
-                plan.type === 'vip' ? 'bg-purple-600/20 text-purple-400 keep-accent' : 'bg-blue-600/20 text-blue-400 keep-accent'
+                plan.type === 'vip'
+                  ? 'bg-purple-600/20 text-purple-400 keep-accent'
+                  : plan.type === 'premium'
+                    ? 'bg-blue-600/20 text-blue-400 keep-accent'
+                    : 'bg-ns-raised text-ns-muted border border-ns'
               }`} title={plan.expiresAt ? `Hết hạn: ${formatPlanExpiry(plan.expiresAt)}` : undefined}>
                 {planLabel}
-                {plan.type === 'vip' && plan.interviewSessionsLeft > 0 && ` · ${plan.interviewSessionsLeft} buổi`}
               </span>
             )}
           </div>
@@ -257,7 +280,9 @@ export default function AppLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <div key={location.pathname} className="animate-page-in min-h-full">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -37,6 +37,9 @@ Intersection Observer — animate khi section vào viewport (scroll tới đâu 
 
 | Class | Hiệu ứng |
 |-------|----------|
+| `.animate-page-in` | Entry khi đổi route (`AppLayout` wrap `<Outlet />`) |
+| `.animate-fade-in` | Fade modal / overlay |
+| `.animate-slide-up` | Panel entry (CV scan, confirm dialog) |
 | `.badge-pill` | Scale nhẹ + shadow khi hover |
 | `.card-interactive` | Border đậm hơn + translateY(-2px) + shadow |
 

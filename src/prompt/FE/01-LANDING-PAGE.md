@@ -73,7 +73,7 @@ Do NOT separate into components — write everything in one file.
   - CTA: "Bắt đầu miễn phí" (outline button)
 
   Card 2 — Premium Analysis (highlighted)
-  - Price: "49.000đ/tháng" + note "hoặc 99.000đ/3 tháng"
+  - Price: "49.000đ/tháng" + note "hoặc 99.000đ"
   - Features: Scan CV không giới hạn, Chỉnh sửa câu theo AI + action verbs ATS-chuẩn, Lộ trình chi tiết (link khoá học cụ thể), Gợi ý công ty phù hợp
   - CTA: "Nâng cấp ngay" (blue gradient button)
 
@@ -81,6 +81,13 @@ Do NOT separate into components — write everything in one file.
   - Price: "149.000đ/5 buổi" + note "Lẻ: 19.000–29.000đ/buổi"
   - Features: 5 buổi phỏng vấn AI 1-1 (Voice/Text), Điều chỉnh độ khó (Dễ/Vừa/Khó), Báo cáo lỗi chi tiết + câu mẫu chuẩn chuyên gia, Bao gồm scan CV không giới hạn
   - CTA: "Mua gói VIP" (outline button)
+
+**5b. Testimonials carousel (2026-07-03)** — ngay **trước** stats bar
+- `FeedbackCarousel` + `src/data/testimonials.ts`
+- Avatar: `public/picture/user-1.png` … `user-5.png`
+- Desktop: viewport **overflow-hidden** — chỉ 3 card, card cố định **340px** cao
+- Auto-slide 5s (`transform` trái), nút `<` `>` ngoài khung, pause khi hover
+- Nội dung feedback trong `testimonials.ts`: văn phong thân thiện, ít thuật ngữ kỹ thuật
 
 **6. Social Proof / Stats Bar**
 - Full-width dark strip: 3 stats side by side

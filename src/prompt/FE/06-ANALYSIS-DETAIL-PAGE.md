@@ -72,7 +72,11 @@ type Tab = 'overview' | 'ats' | 'compatibility' | 'improve' | 'jobs' | 'courses'
 
 ### TAB: Tổng quan
 
-**Section A — Score badges** (3 cards): ATS, Từ khóa, Kinh nghiệm summary
+**Section A — Score badges** (4 cards): ATS, Từ khóa, Kinh nghiệm, Trình bày CV
+
+**Section A2 — Coverage breakdown** — **ẩn trên UI** (logic vẫn tính trong `coverageBreakdown` backend/mock)
+
+**Tab ATS:** ẩn block weighted formula — chỉ hiển thị điểm ATS + danh sách `atsIssues`
 
 **Section B — CV & JD preview (NEW)**
 
@@ -94,17 +98,21 @@ Dialog spec:
 
 **Section C — Strengths & Weaknesses** (optional 2-col, if in mock data)
 
+**Experience comment:** render qua `FormattedText` — `**text**` → bold thật, không hiện literal asterisk.
+
 ---
 
 ### TAB: Kiểm tra ATS
 
+> **2026-07-03:** Điểm ATS tính tự động (weighted) — [18-ATS-SCORING.md](./18-ATS-SCORING.md)
+
 Layout: grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 (ratio 1:2, có thể 1:3)
 
-LEFT column — ATS Score card:
+LEFT column — ATS Score card + **breakdown weighted** (keyword 38%, experience 32%, format 22%, structure 8%):
 - Large score number
 - Label "Điểm ATS"
 - Short description
-- Circular or bar indicator
+- Component contributions + penalty JD min (nếu có)
 
 RIGHT column — ATS Issues list:
 - Each issue: severity badge (Nghiêm trọng / Trung bình / Nhẹ) + message + fix suggestion

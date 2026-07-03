@@ -92,10 +92,10 @@ export default function AnalysisListPage() {
               <button
                 key={scan.id}
                 onClick={() => navigate(`/analysis/${scan.id}`)}
-                className="w-full bg-ns-card border border-ns rounded-xl px-5 py-4 flex items-center gap-4 hover:border-blue-500/30 transition text-left cursor-pointer"
+                className="w-full bg-ns-card border border-ns rounded-xl px-5 py-4 flex items-center gap-4 hover:border-blue-500/30 transition text-left cursor-pointer scan-history-row"
               >
-                <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <BarChart2 size={18} className="text-blue-400" />
+                <div className="w-10 h-10 bg-blue-400/10 stat-icon-tile stat-icon-tile-blue rounded-xl flex items-center justify-center flex-shrink-0">
+                  <BarChart2 size={18} className="keep-accent text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-ns-primary font-medium truncate">{formatScanDisplayTitle(scan.title)}</p>

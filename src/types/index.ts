@@ -40,12 +40,19 @@ export interface DocumentInput {
   fileId?: string
 }
 
+export type ExperienceUnit = 'month' | 'year'
+
 export interface ScanConfig {
   company: string
   industry?: string
   role?: string
+  /** @deprecated Dùng jdMinExperience + jdMinExperienceUnit */
   experienceFrom?: number
+  /** @deprecated Dùng jdMinExperience + jdMinExperienceUnit */
   experienceTo?: number
+  /** Yêu cầu KN tối thiểu do user nhập khi JD thiếu thông tin (tùy chọn) */
+  jdMinExperience?: number
+  jdMinExperienceUnit?: ExperienceUnit
 }
 
 export interface CVScore {
@@ -93,12 +100,65 @@ export interface CourseRecommendation {
   reason: string
 }
 
+export interface WorkTimelineEntry {
+  company: string
+  role?: string
+  from: string
+  to: string
+  months: number
+}
+
+export interface ComputedExperience {
+  /** Tổng tháng (union timeline — không cộng trùng) */
+  totalMonths: number
+  label: string
+  timeline: WorkTimelineEntry[]
+  /** KN liên quan domain JD (vd: chỉ project DE/cloud) */
+  relevantMonths?: number
+  relevantLabel?: string
+  relevantNote?: string
+}
+
+export interface AtsScoreBreakdown {
+  finalScore: number
+  components: {
+    keyword: { score: number; weight: number; contribution: number; label: string }
+    experience: { score: number; weight: number; contribution: number; label: string }
+    presentation: { score: number; weight: number; contribution: number; label: string }
+    structure: { score: number; weight: number; contribution: number; label: string }
+  }
+  penalties: {
+    issuePenalty: number
+    jdMinPenalty: number
+  }
+  summary: string
+}
+
+export interface CoverageScoreBreakdown {
+  finalScore: number
+  components: {
+    keyword: { score: number; weight: number; contribution: number; label: string }
+    experience: { score: number; weight: number; contribution: number; label: string }
+    ats: { score: number; weight: number; contribution: number; label: string }
+    presentation: { score: number; weight: number; contribution: number; label: string }
+  }
+  penalties: { jdMinPenalty: number }
+  summary: string
+}
+
 export interface CVAnalysisResult {
   id: string
   cvName: string
   analyzedRole: string
   analyzedIndustry: string
   experienceLevel: string
+  computedExperience?: ComputedExperience
+  /** Nhãn yêu cầu KN tối thiểu từ form (vd: "3 tháng") */
+  jdMinExperienceLabel?: string
+  /** Chi tiết cách tính điểm ATS (weighted composite) */
+  atsBreakdown?: AtsScoreBreakdown
+  /** Chi tiết Coverage Score tổng */
+  coverageBreakdown?: CoverageScoreBreakdown
   analyzedAt: string
   scores: CVScore
   strengths: string[]
@@ -143,6 +203,25 @@ export interface AppNotification {
   read: boolean
   createdAt: string
   type: 'info' | 'success' | 'promo'
+}
+
+export interface InterviewQuestionResult {
+  question: string
+  answer: string
+  score: number
+  feedback: string
+}
+
+export interface InterviewSessionRecord {
+  id: string
+  userId: string
+  role: string
+  industry: string
+  mode: InterviewMode
+  overallScore: number
+  durationSeconds: number
+  completedAt: string
+  questions: InterviewQuestionResult[]
 }
 
 export interface InterviewMessage {
@@ -194,6 +273,7 @@ export interface AppState {
   plan: PlanInfo
   scans: ScanRecord[]
   cvFiles: CVFileRecord[]
+  interviews: InterviewSessionRecord[]
   notifications: AppNotification[]
   hasSeenOnboarding: boolean
 }

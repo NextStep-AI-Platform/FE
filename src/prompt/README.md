@@ -127,8 +127,10 @@ MVP **không cần backend**. Dữ liệu lưu `localStorage` key `ns-app-state`
 | 1 | Vào `/` → **Bắt đầu miễn phí** hoặc **Đăng nhập** |
 | 2 | **Đăng ký** email/password → chuyển tab Login → đăng nhập → `/dashboard` |
 | 3 | **Google demo** → luôn login `demo@nextstep.ai` (không dùng email trong form) |
-| 4 | **Phân tích CV** → `/cv-scan` → upload/dán CV + JD → Bắt đầu phân tích |
-| 5 | Xem kết quả → `/analysis` → click vào item → `/analysis/:id` |
+| 4 | **Phân tích CV** → `/cv-scan` → upload CV + JD từ folder `CV&JD` → **Bắt đầu phân tích** |
+| 5 | Xem kết quả → `/analysis` → click item → kiểm tra 6 tab + timeline kinh nghiệm |
+
+**Test mock CV×JD:** [FE/16-CV-JD-DEMO-CASES.md](./FE/16-CV-JD-DEMO-CASES.md) · ATS: [FE/18-ATS-SCORING.md](./FE/18-ATS-SCORING.md) · CS: [FE/19-COVERAGE-SCORING.md](./FE/19-COVERAGE-SCORING.md)
 | 6 | **Nâng cấp** → `/pricing` → mock confirm → badge Premium/VIP trên header |
 | 7 | **Mock Interview** → cần VIP → `/mock-interview` |
 
@@ -255,7 +257,7 @@ Follow existing code conventions. UI text in Vietnamese.
 | Tracker | [FE/MVP-CHECKLIST.md](./FE/MVP-CHECKLIST.md) |
 | Infra | [FE/10-APP-ROUTER.md](./FE/10-APP-ROUTER.md), [FE/11-GLOBAL-INFRA.md](./FE/11-GLOBAL-INFRA.md), [FE/12-LIGHT-THEME.md](./FE/12-LIGHT-THEME.md) |
 | Pages | [01 Landing](./FE/01-LANDING-PAGE.md) · [02 Auth](./FE/02-AUTH-PAGE.md) · [03 Layout](./FE/03-APP-LAYOUT.md) · [04 Dashboard](./FE/04-DASHBOARD.md) · [05 CV Scan](./FE/05-CV-SCAN-PAGE.md) · [06 Analysis](./FE/06-ANALYSIS-LIST-PAGE.md) · [06 Detail](./FE/06-ANALYSIS-DETAIL-PAGE.md) · [07 Interview](./FE/07-MOCK-INTERVIEW-PAGE.md) · [08 Pricing](./FE/08-PRICING-PAGE.md) · [09 Profile](./FE/09-PROFILE-PAGE.md) |
-| Polish | [FE/15-UI-POLISH.md](./FE/15-UI-POLISH.md), [FE/16-THEME-ASSETS-PAGES.md](./FE/16-THEME-ASSETS-PAGES.md), [FE/17-ANIMATIONS-RESPONSIVE.md](./FE/17-ANIMATIONS-RESPONSIVE.md) |
+| Polish | [FE/16-CV-JD-DEMO-CASES.md](./FE/16-CV-JD-DEMO-CASES.md), [FE/18-ATS-SCORING.md](./FE/18-ATS-SCORING.md), [FE/19-COVERAGE-SCORING.md](./FE/19-COVERAGE-SCORING.md), [FE/15-UI-POLISH.md](./FE/15-UI-POLISH.md), [FE/16-THEME-ASSETS-PAGES.md](./FE/16-THEME-ASSETS-PAGES.md), [FE/17-ANIMATIONS-RESPONSIVE.md](./FE/17-ANIMATIONS-RESPONSIVE.md) |
 | Post-MVP | [FE/14-ONBOARDING-GUIDELINE.md](./FE/14-ONBOARDING-GUIDELINE.md) |
 
 ### Backend — [BE/](./BE/)

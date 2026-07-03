@@ -9,6 +9,7 @@ import BrandName from '../components/BrandName'
 import LogoMark from '../components/LogoMark'
 import AssetImage from '../components/AssetImage'
 import ScrollReveal from '../components/ScrollReveal'
+import FeedbackCarousel from '../components/FeedbackCarousel'
 import { PICTURE } from '../lib/picture'
 
 export default function LandingPage() {
@@ -236,6 +237,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── TESTIMONIALS ── */}
+      <FeedbackCarousel />
+
       {/* ── STATS ── */}
       <section className="bg-ns-card/50 py-16">
         <div className="max-w-7xl mx-auto px-6">
@@ -247,7 +251,7 @@ export default function LandingPage() {
             ].map(({ value, label }, i) => (
               <ScrollReveal key={label} delay={i * 100} direction="up">
               <div className="badge-pill py-4">
-                <div className="font-heading text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent mb-2">
+                <div className="font-heading text-4xl md:text-5xl font-bold keep-accent bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent mb-2">
                   {value}
                 </div>
                 <p className="text-ns-muted text-sm">{label}</p>
@@ -303,7 +307,7 @@ export default function LandingPage() {
                 <span className="font-heading text-4xl font-bold text-white">49.000đ</span>
                 <span className="text-ns-muted text-sm ml-2">/tháng</span>
               </div>
-              <p className="text-ns-faint text-xs mb-5">hoặc 99.000đ/3 tháng</p>
+              <p className="text-ns-faint text-xs mb-5">hoặc 99.000đ</p>
               <p className="text-ns-muted text-sm mb-6">Dành cho người tìm việc nghiêm túc</p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Scan CV không giới hạn', 'Phân tích ATS chi tiết', 'Chỉnh sửa CV bằng AI', 'Lộ trình học + link khoá học', 'Gợi ý công ty phù hợp'].map(f => (

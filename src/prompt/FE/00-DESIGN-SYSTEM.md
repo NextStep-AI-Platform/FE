@@ -163,7 +163,9 @@ Helper:  text-slate-500 text-xs mt-1
 - Lỗi validate form → mô tả field cụ thể
 - Lỗi giả lập BE → "Không thể kết nối máy chủ. Vui lòng thử lại."
 - Toggle thông báo → "Đã bật/tắt [tên thông báo]"
-- Nâng cấp gói → "Nâng cấp [Premium/VIP] thành công"
+- Nâng cấp gói → "Nâng cấp [Premium/VIP] thành công" + mô tả quyền lợi mở khóa
+- Phỏng vấn AI → bắt đầu (info), hoàn tất (success + popup), hết lượt (error), thoát sớm (warning)
+- Scan CV → hết quota free (warning), hoàn tất (success)
 - Xóa tài khoản → "Đã xóa tài khoản thành công"
 
 ### 6.5 Dialog / Modal
@@ -243,7 +245,9 @@ Layout: 2 cột (CV | JD) — stack vertical trên mobile
 Mỗi cột: toggle Upload file | Dán nội dung
 CV cột: list CV đã upload (nếu >1 lần scan) — chọn lại file cũ
 Config: Tên công ty* (user nhập bắt buộc — không auto-fill JD)
-        Ngành / Vị trí — optional, có "Khác" + input
+        Ngành — optional (gợi ý vị trí)
+        Vị trí ứng tuyển * — bắt buộc; chọn dropdown hoặc nhập trực tiếp nếu chưa chọn ngành
+        JD * — bắt buộc (file hoặc paste)
         Kinh nghiệm — optional, range "Từ X năm" → "Đến Y năm"
 Hết quota free → blur trang + popup upsell Premium
 Analyze → loading → lưu scan → /analysis/:newId
@@ -288,11 +292,11 @@ Step-by-step spotlight tour cho user mới. Có nút "Đã hiểu" skip toàn b�
 
 | Key | Label UI | Tooltip (hover `!`) |
 |-----|----------|---------------------|
-| overall | Điểm tổng | Tổng hợp mức phù hợp CV với vị trí và JD |
-| ats | Khả năng ATS | Mức CV có thể được hệ thống tuyển dụng tự động đọc và lọc |
-| keyword | Độ khớp từ khóa | Mức CV chứa từ khóa quan trọng trong JD/ngành |
-| experience | Phù hợp kinh nghiệm | Mức kinh nghiệm trong CV khớp yêu cầu vị trí |
-| presentation | Trình bày CV | Cấu trúc, format, dễ đọc và chuyên nghiệp |
+| overall | Coverage Score (CS) | KW 30% + KN 30% + ATS 25% + Trình bày 15% — mức phù hợp tổng thể CV×JD |
+| ats | Khả năng ATS | KW 38% + KN 32% + Format 22% + Cấu trúc 8% — khả năng qua lọc tự động |
+| keyword | Độ khớp từ khóa | Hard skills & required terms khớp JD |
+| experience | Phù hợp kinh nghiệm | YOE, domain, recency, title fit so với JD |
+| presentation | Trình bày CV | Format, cấu trúc section, khả năng parse PDF |
 
 ---
 

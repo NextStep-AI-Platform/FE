@@ -44,12 +44,13 @@ import BrandName from '@/components/BrandName'
 ---
 
 ### Topbar — Plan Badge
-Next to upgrade pill, show user plan:
-- Free: hidden or small "Free" muted badge
-- Premium: "Premium" blue badge + tooltip expiry date
-- VIP: "VIP" purple badge + "Còn X buổi PV"
+Next to page title (authenticated):
+- **Free:** badge muted `Free`
+- **Premium:** badge blue `Premium` + tooltip expiry
+- **VIP:** badge purple `VIP` + tooltip expiry
+- **Không** hiển thị số buổi phỏng vấn trên header (xem quota tại `/mock-interview`)
 
-Data from useApp().plan
+Data from `useApp().plan`
 
 ---
 
@@ -76,7 +77,9 @@ Seed 3 notifications on register (in AppContext):
 
 ### User Card (sidebar bottom)
 Use real user from context (name, email, avatar if set)
-Logout → app.logout() + toast + navigate /
+Logout → app.logout() + toast.info("Đã đăng xuất") + navigate /
+
+**Nav Tài khoản active:** Hồ sơ / Nâng cấp / Cài đặt dùng cùng style active như tab Chính (`bg-blue-600/20`, chevron). Cài đặt: `?tab=settings`.
 
 ---
 

@@ -30,16 +30,23 @@ Add semantic text tokens:
 html.light {
   --ns-bg-page: #F1F5F9;
   --ns-bg-card: #FFFFFF;
-  --ns-border: #171717;      /* neutral đen — dễ nhìn trên nền trắng */
-  --ns-border-sub: #404040;
-  --ns-text-primary: #0A0A0A;
-  --ns-text-secondary: #262626;
-  --ns-text-muted: #525252;
-  --ns-text-faint: #737373;
+  --ns-bg-raised: #F8FAFC;
+  --ns-border: #E2E8F0;
+  --ns-border-sub: #CBD5E1;
+  --ns-text-primary: #0F172A;
+  --ns-text-secondary: #334155;
+  --ns-text-muted: #64748B;
+  --ns-text-faint: #94A3B8;
 }
 ```
 
-Accent trên light: override `text-blue-400` → `#171717` **trừ** class `.keep-accent` (nav active, plan badge, icon trên nền màu). Xem `17-ANIMATIONS-RESPONSIVE.md`.
+**2026-07-03:** Border `#CBD5E1`, semantic qua `.keep-accent`. Utilities: `dashboard-stat-card`, `stat-icon-tile-*`, `scan-history-row`, `insight-list-item`, `score-ring-light`, `premium-lock-badge`.
+
+**2026-07-03 (b):** Pricing — `pricing-plan-card`, `pricing-vip-card`, `pricing-stat-tile`, `faq-item`. Mock Interview hub dùng cùng pattern dashboard.
+
+**Pages polished (light):** Dashboard, Pricing, Mock Interview, Analysis list, AppLayout header badge.
+
+**Analysis detail light:** metric tiles có `metric-tile-*` top border màu; keyword pills `keyword-pill-match/miss`; không hiển thị công thức CS/ATS weighted trên UI.
 
 Sidebar + main header: cùng `h-16`, class `app-shell-header`, `border-b border-ns` — viền thẳng hàng.
 
