@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, Crown, Zap, ArrowLeft, Shield, Clock, Copy, CheckCircle2 } from 'lucide-react'
+import { Check, Crown, Zap, ArrowLeft, Shield, Clock, Copy, CheckCircle2, RefreshCw } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useToast } from '../contexts/ToastContext'
 
 type PlanKey = 'premium' | 'vip'
 type Billing = 'monthly' | 'quarterly'
 type PaymentMethod = 'momo' | 'vnpay' | 'zalopay' | 'bank'
-type PageState = 'form' | 'qr' | 'success'
+type PageState = 'form' | 'qr' | 'processing' | 'success'
 
 // ─── Plan metadata ───────────────────────────────────────────────────────────
 
@@ -243,6 +243,8 @@ export default function PaymentPage() {
   const [pageState, setPageState] = useState<PageState>('form')
   const [orderId] = useState(genOrderId)
   const [copied, setCopied] = useState(false)
+  const [countdown, setCountdown] = useState(5)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const info = PLAN_INFO[planKey]
   const price = info.price[billing]
@@ -253,6 +255,27 @@ export default function PaymentPage() {
     if (currentPlan.type === planKey) navigate('/pricing', { replace: true })
   }, [currentPlan.type, planKey, navigate])
 
+  // Auto-navigate after 5s on success screen
+  useEffect(() => {
+    if (pageState !== 'success') return
+    setCountdown(5)
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current!)
+          const msg = planKey === 'vip'
+            ? ['Nâng cấp VIP thành công', '5 buổi phỏng vấn AI đã được kích hoạt']
+            : ['Nâng cấp Premium thành công', 'Đã mở khóa gợi ý công ty và khoá học']
+          toast.success(msg[0], msg[1])
+          navigate('/dashboard')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(countdownRef.current!)
+  }, [pageState])
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
     setCopied(true)
@@ -261,9 +284,26 @@ export default function PaymentPage() {
 
   const handleConfirm = () => setPageState('qr')
 
-  const handlePaid = () => {
+  const handlePaid = async () => {
+    setPageState('processing')
+    await new Promise(r => setTimeout(r, 2000))
     upgradePlan(planKey, billing)
     setPageState('success')
+  }
+
+  // ── Processing ────────────────────────────────────────────────────────────
+  if (pageState === 'processing') {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-6 animate-fade-in">
+        <div className="bg-ns-card border border-ns rounded-2xl p-10 max-w-sm w-full text-center shadow-card">
+          <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-6">
+            <RefreshCw size={36} className="keep-accent text-blue-400 animate-spin" />
+          </div>
+          <h2 className="font-heading font-bold text-ns-primary text-xl mb-2">Đang xác nhận thanh toán</h2>
+          <p className="text-ns-muted text-sm">Vui lòng đợi trong giây lát...</p>
+        </div>
+      </div>
+    )
   }
 
   // ── Success ────────────────────────────────────────────────────────────────
@@ -294,9 +334,27 @@ export default function PaymentPage() {
               )}
             </ul>
           </div>
+          {/* Countdown ring */}
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90">
+              <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-ns-raised" />
+              <circle
+                cx="18" cy="18" r="15"
+                fill="none" stroke="currentColor" strokeWidth="3"
+                strokeDasharray={`${2 * Math.PI * 15}`}
+                strokeDashoffset={`${2 * Math.PI * 15 * (countdown / 5)}`}
+                strokeLinecap="round"
+                className="keep-accent text-blue-400 transition-all duration-1000"
+              />
+            </svg>
+            <p className="text-ns-muted text-sm">
+              Tự động chuyển về Dashboard sau <span className="font-bold text-ns-primary">{countdown}s</span>
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => {
+              clearInterval(countdownRef.current!)
               const msg = planKey === 'vip'
                 ? ['Nâng cấp VIP thành công', '5 buổi phỏng vấn AI đã được kích hoạt']
                 : ['Nâng cấp Premium thành công', 'Đã mở khóa gợi ý công ty và khoá học']
@@ -305,7 +363,7 @@ export default function PaymentPage() {
             }}
             className="btn-primary w-full py-3.5 text-sm font-semibold"
           >
-            Đến Dashboard →
+            Đến Dashboard ngay →
           </button>
         </div>
       </div>
