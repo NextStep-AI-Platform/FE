@@ -2,13 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Star, Zap, Crown, ChevronDown } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
-import { useToast } from '../contexts/ToastContext'
 import { formatPlanExpiry } from '../lib/utils'
 import type { PlanType } from '../types'
 
 type Billing = 'monthly' | 'quarterly'
 type PlanKey = 'free' | 'premium' | 'vip'
-type ConfirmPlan = 'premium' | 'vip' | null
 
 const PLANS = {
   free: {
@@ -91,11 +89,9 @@ function planButton(current: PlanType, target: PlanKey): { label: string; disabl
 
 export default function PricingPage() {
   const navigate = useNavigate()
-  const toast = useToast()
-  const { plan, upgradePlan } = useApp()
+  const { plan } = useApp()
   const [billing, setBilling] = useState<Billing>('monthly')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [confirmPlan, setConfirmPlan] = useState<ConfirmPlan>(null)
 
   const formatPrice = (price: number) =>
     price === 0 ? 'Miễn phí' : `${price.toLocaleString('vi-VN')}đ`
@@ -103,20 +99,7 @@ export default function PricingPage() {
   const handleUpgrade = (type: 'premium' | 'vip') => {
     const btn = planButton(plan.type, type)
     if (btn.disabled || !btn.upgrade) return
-    setConfirmPlan(type)
-  }
-
-  const confirmUpgrade = () => {
-    if (!confirmPlan) return
-    upgradePlan(confirmPlan, billing)
-    if (confirmPlan === 'premium') {
-      toast.success('Nâng cấp Premium thành công', 'Đã mở khóa gợi ý công ty phù hợp và khoá học')
-      navigate('/dashboard')
-    } else {
-      toast.success('Nâng cấp VIP thành công', '5 buổi phỏng vấn AI — vào tab Phỏng vấn AI để bắt đầu')
-      navigate('/mock-interview')
-    }
-    setConfirmPlan(null)
+    navigate(`/payment?plan=${type}&billing=${billing}`)
   }
 
   const freeBtn = planButton(plan.type, 'free')
@@ -285,22 +268,6 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {confirmPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-ns-card border border-ns rounded-2xl p-6 max-w-md w-full shadow-xl animate-slide-up">
-            <h3 className="font-heading font-semibold text-ns-primary text-lg mb-2">
-              Xác nhận nâng cấp {confirmPlan === 'premium' ? 'Premium' : 'VIP'}
-            </h3>
-            <p className="text-ns-muted text-sm mb-6">
-              Demo MVP — không thu phí thật. Gói {billing === 'quarterly' ? '3 tháng' : 'hàng tháng'} sẽ được kích hoạt ngay.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button type="button" onClick={() => setConfirmPlan(null)} className="border border-ns text-ns-secondary px-4 py-2 rounded-xl cursor-pointer">Hủy</button>
-              <button type="button" onClick={confirmUpgrade} className="btn-primary text-sm">Xác nhận nâng cấp</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
