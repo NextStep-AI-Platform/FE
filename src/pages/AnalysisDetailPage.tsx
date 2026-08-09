@@ -14,7 +14,7 @@ import {
 import { FormattedText } from '../components/FormattedText'
 import { USE_API } from '../lib/config'
 import { getAnalysis } from '../lib/api/analysis'
-import type { DocumentInput } from '../types'
+import type { DocumentInput, ScanRecord } from '../types'
 
 type Tab = 'overview' | 'ats' | 'compatibility' | 'improve' | 'jobs' | 'courses'
 
