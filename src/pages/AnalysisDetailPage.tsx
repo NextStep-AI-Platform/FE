@@ -95,7 +95,7 @@ export default function AnalysisDetailPage() {
     }
   }, [id, localScan])
 
-  const scan = localScan || remoteScan
+  const scan = (localScan || remoteScan) as ScanRecord | undefined
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [preview, setPreview] = useState<{ title: string; doc: DocumentInput } | null>(null)
   const [docxConfirm, setDocxConfirm] = useState<DocumentInput | null>(null)
