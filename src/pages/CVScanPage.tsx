@@ -6,6 +6,8 @@ import { useApp } from '../contexts/AppContext'
 import { useToast } from '../contexts/ToastContext'
 import { generateMockResult } from '../data/mockAnalysis'
 import { buildScanTitle, formatDateTime, formatFileSize } from '../lib/utils'
+import { USE_API } from '../lib/config'
+import { createScan, runScan, pollScanUntilDone } from '../lib/api/scans'
 import { validateScanDocuments } from '../lib/cvJdMatch'
 import { ANALYSIS_PROGRESS_STEPS, getAnalysisStepStatus } from '../lib/analysisProgress'
 import type { CVFileRecord, DocumentInput, ExperienceUnit, ScanConfig, ScanRecord } from '../types'
@@ -344,7 +346,7 @@ export default function CVScanPage() {
     setCv({ mode: 'file', file: mockFile, text: '', selectedFileId: record.id })
   }
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!hasCv) { toast.error('Thiếu CV', 'Vui lòng tải file CV (PDF/DOCX)'); return }
     if (!hasJd) { toast.error('Thiếu JD', 'Vui lòng tải file hoặc dán nội dung mô tả công việc (JD)'); return }
     if (!company.trim()) { toast.error('Thiếu tên công ty', 'Vui lòng nhập tên công ty để đặt tên kết quả'); return }
@@ -372,6 +374,36 @@ export default function CVScanPage() {
 
     setAnalyzing(true)
     setProgress(0)
+    
+    const config: ScanConfig = {
+      company: company.trim(),
+      industry: finalIndustry || undefined,
+      role: resolvedRole,
+      ...(jdMinExpValue
+        ? {
+            jdMinExperience: Number(jdMinExpValue),
+            jdMinExperienceUnit: jdMinExpUnit,
+          }
+        : {}),
+    }
+
+    if (USE_API) {
+      try {
+        const scan = await createScan({ cv: cvInput, jd: jdInput, config })
+        await runScan(scan.id)
+        const analysisId = await pollScanUntilDone(scan.id, (data) => {
+          setProgress(data.progressPercent)
+        })
+        setAnalyzing(false)
+        toast.success('Phân tích hoàn tất', 'Coverage Score đã được tạo bởi AI')
+        navigate(`/analysis/${analysisId}`)
+      } catch (e: any) {
+        setAnalyzing(false)
+        toast.error('Lỗi khi phân tích bằng AI', e.message || 'Không thể kết nối API')
+      }
+      return
+    }
+
     const stepCount = ANALYSIS_PROGRESS_STEPS.length
     const totalMs = 2800
     const stepMs = totalMs / stepCount
@@ -385,17 +417,6 @@ export default function CVScanPage() {
     setTimeout(() => {
       window.clearInterval(stepTimer)
       setProgress(100)
-      const config: ScanConfig = {
-        company: company.trim(),
-        industry: finalIndustry || undefined,
-        role: resolvedRole,
-        ...(jdMinExpValue
-          ? {
-              jdMinExperience: Number(jdMinExpValue),
-              jdMinExperienceUnit: jdMinExpUnit,
-            }
-          : {}),
-      }
       const scanId = `scan_${Date.now()}`
       const result = generateMockResult(scanId, config, cvInput, jdInput)
       const record: ScanRecord = {
@@ -405,7 +426,7 @@ export default function CVScanPage() {
       }
       addScan(record)
       setAnalyzing(false)
-      toast.success('Phân tích hoàn tất', 'Coverage Score đã được tạo')
+      toast.success('Phân tích hoàn tất', 'Coverage Score mock đã được tạo')
       navigate(`/analysis/${scanId}`)
     }, 2800)
   }

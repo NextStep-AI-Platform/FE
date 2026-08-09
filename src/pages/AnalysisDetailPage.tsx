@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, BookOpen, Building2, CheckCircle, Download, Info, Lock,
@@ -12,6 +12,8 @@ import {
   getScoreLabel,
 } from '../lib/utils'
 import { FormattedText } from '../components/FormattedText'
+import { USE_API } from '../lib/config'
+import { getAnalysis } from '../lib/api/analysis'
 import type { DocumentInput } from '../types'
 
 type Tab = 'overview' | 'ats' | 'compatibility' | 'improve' | 'jobs' | 'courses'
@@ -75,12 +77,38 @@ export default function AnalysisDetailPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const { scans, isPremium } = useApp()
-  const scan = scans.find(s => s.id === id)
+  const localScan = scans.find(s => s.id === id)
+  const [remoteScan, setRemoteScan] = useState<any>(null)
+  const [loading, setLoading] = useState(USE_API && !localScan)
+  
+  useEffect(() => {
+    if (USE_API && !localScan && id) {
+      getAnalysis(id).then(data => {
+        setRemoteScan(data)
+        setLoading(false)
+      }).catch(e => {
+        console.error(e)
+        setLoading(false)
+      })
+    } else {
+      setLoading(false)
+    }
+  }, [id, localScan])
+
+  const scan = localScan || remoteScan
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [preview, setPreview] = useState<{ title: string; doc: DocumentInput } | null>(null)
   const [docxConfirm, setDocxConfirm] = useState<DocumentInput | null>(null)
 
   const premium = isPremium()
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto text-center flex items-center justify-center h-64">
+        <p className="text-ns-primary font-medium animate-pulse">Đang tải dữ liệu phân tích từ server...</p>
+      </div>
+    )
+  }
 
   if (!scan) {
     return (
