@@ -49,7 +49,8 @@ function DualInputPanel({
 
   const handleFile = (file: File | undefined) => {
     if (!file) return
-    const ok = file.type === 'application/pdf' || file.name.endsWith('.docx') || file.name.endsWith('.doc')
+    const lowerName = file.name.toLowerCase()
+    const ok = file.type === 'application/pdf' || lowerName.endsWith('.pdf') || lowerName.endsWith('.docx')
     if (!ok) return
     onChange({ ...state, mode: 'file', file, text: '', selectedFileId: undefined })
   }
@@ -122,7 +123,7 @@ function DualInputPanel({
             <Upload size={32} className="text-blue-400 mb-3" />
             <p className="text-ns-secondary text-sm">Kéo thả hoặc chọn file</p>
             <p className="text-ns-faint text-xs mt-1">PDF, DOCX · Tối đa 5MB</p>
-            <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
+            <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
           </div>
         )
       ) : (
@@ -369,17 +370,12 @@ export default function CVScanPage() {
   }
 
   const handleAnalyze = async () => {
-    if (!hasCv) { toast.error('Thiếu CV', USE_API ? 'Vui lòng dán nội dung CV' : 'Vui lòng tải file CV (PDF/DOCX)'); return }
-    if (!hasJd) { toast.error('Thiếu JD', USE_API ? 'Vui lòng dán nội dung JD' : 'Vui lòng tải file hoặc dán nội dung JD'); return }
+    if (!hasCv) { toast.error('Thiếu CV', 'Vui lòng tải file hoặc dán nội dung CV'); return }
+    if (!hasJd) { toast.error('Thiếu JD', 'Vui lòng tải file hoặc dán nội dung JD'); return }
     if (!company.trim()) { toast.error('Thiếu tên công ty', 'Vui lòng nhập tên công ty để đặt tên kết quả'); return }
     if (!resolvedRole) { toast.error('Thiếu vị trí', 'Vui lòng chọn hoặc nhập vị trí ứng tuyển — tên này sẽ ghi vào kết quả quét CV'); return }
     if (!canScan()) {
       toast.warning('Hết lượt scan miễn phí', 'Nâng cấp Premium để phân tích CV không giới hạn')
-      return
-    }
-
-    if (USE_API && (cv.mode !== 'text' || jd.mode !== 'text')) {
-      toast.error('Chi ho tro noi dung text', 'Phase 1b chua ho tro tai file CV/JD')
       return
     }
 
@@ -390,6 +386,10 @@ export default function CVScanPage() {
       const jdLength = jdInput.textContent?.trim().length ?? 0
       if (cvLength > 100_000 || jdLength > 100_000) {
         toast.error('Nội dung quá dài', 'CV và JD phải ngắn hơn 100.000 ký tự')
+        return
+      }
+      if ((cv.file?.size ?? 0) > 5 * 1024 * 1024 || (jd.file?.size ?? 0) > 5 * 1024 * 1024) {
+        toast.error('File quá lớn', 'Mỗi file PDF/DOCX phải nhỏ hơn hoặc bằng 5 MB')
         return
       }
     } else {
@@ -427,7 +427,13 @@ export default function CVScanPage() {
       try {
         pollController.current?.abort()
         pollController.current = new AbortController()
-        const scan = await createScan({ cv: cvInput, jd: jdInput, config })
+        const scan = await createScan({
+          cv: cvInput,
+          jd: jdInput,
+          config,
+          cvFile: cv.file ?? undefined,
+          jdFile: jd.file ?? undefined,
+        })
         await runScan(scan.id)
         await refreshSession().catch(() => undefined)
         const analysisId = await pollScanUntilDone(scan.id, (data) => {
@@ -485,21 +491,19 @@ export default function CVScanPage() {
             <div className="h-full min-h-0 flex flex-col">
               <DualInputPanel
                 title="CV của bạn"
-                subtitle={USE_API ? 'Bắt buộc - dán nội dung CV' : 'Bắt buộc - tải file PDF hoặc DOCX'}
+                subtitle="Bắt buộc - tải PDF/DOCX hoặc dán nội dung CV"
                 state={cv}
                 onChange={setCv}
                 allowTextMode={USE_API}
-                allowFileMode={!USE_API}
                 textDisabledHint="Phát triển sau"
               />
             </div>
             <div className="h-full min-h-0 flex flex-col">
               <DualInputPanel
                 title="Mô tả công việc (JD)"
-                subtitle={USE_API ? 'Bắt buộc - dán nội dung JD' : 'Bắt buộc - tải file JD hoặc dán nội dung'}
+                subtitle="Bắt buộc - tải PDF/DOCX hoặc dán nội dung JD"
                 state={jd}
                 onChange={setJd}
-                allowFileMode={!USE_API}
               />
             </div>
           </div>
