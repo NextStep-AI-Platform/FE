@@ -370,7 +370,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     if (USE_API) {
-      logoutApi()
+      void logoutApi()
       setApiSession(null)
     }
     setPersisted(prev => ({ ...prev, currentUserId: null }))

@@ -1,4 +1,9 @@
-import { apiRequest, setTokens, clearTokens } from './client';
+import {
+  apiRequest,
+  setTokens,
+  clearTokens,
+  getRefreshToken,
+} from './client';
 import type { PlanInfo, User } from '../../types';
 
 export interface AuthResponse {
@@ -39,7 +44,20 @@ export async function fetchMe(): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/auth/me');
 }
 
-export function logoutApi(): void {
-  // Có thể backend không có route logout, nhưng clear local token là đủ
-  clearTokens();
+export async function logoutApi(): Promise<void> {
+  const refreshToken = getRefreshToken();
+  try {
+    if (refreshToken) {
+      await apiRequest<void>('/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+        skipAuth: true,
+        skipRefresh: true,
+      });
+    }
+  } catch {
+    // Local logout must still complete if the access token already expired.
+  } finally {
+    clearTokens();
+  }
 }

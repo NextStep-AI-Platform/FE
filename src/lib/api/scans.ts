@@ -15,17 +15,27 @@ export async function createScan(payload: {
   cv: DocumentInput;
   jd: DocumentInput;
   config: ScanConfig;
+  cvFile?: File;
+  jdFile?: File;
 }): Promise<{ id: string; status: string }> {
-  if (payload.cv.mode !== 'text' || !payload.cv.textContent?.trim()) {
-    throw new Error('Phase 1b only supports CV text input');
-  }
-  if (payload.jd.mode !== 'text' || !payload.jd.textContent?.trim()) {
-    throw new Error('Phase 1b only supports job description text input');
+  const formData = new FormData();
+  if (payload.cv.mode === 'file') {
+    if (!payload.cvFile) throw new Error('CV file is required');
+    formData.append('cv_file', payload.cvFile);
+  } else if (payload.cv.textContent?.trim()) {
+    formData.append('cv_text', payload.cv.textContent.trim());
+  } else {
+    throw new Error('CV text is required');
   }
 
-  const formData = new FormData();
-  formData.append('cv_text', payload.cv.textContent.trim());
-  formData.append('jd_text', payload.jd.textContent.trim());
+  if (payload.jd.mode === 'file') {
+    if (!payload.jdFile) throw new Error('JD file is required');
+    formData.append('jd_file', payload.jdFile);
+  } else if (payload.jd.textContent?.trim()) {
+    formData.append('jd_text', payload.jd.textContent.trim());
+  } else {
+    throw new Error('Job description text is required');
+  }
   formData.append('config_company', payload.config.company || '');
   formData.append('config_role', payload.config.role || '');
   formData.append('config_industry', payload.config.industry || '');

@@ -30,7 +30,36 @@ export function clearTokens() {
   localStorage.removeItem('ns-refresh-token');
 }
 
-type RequestOptions = RequestInit & { skipAuth?: boolean };
+type RequestOptions = RequestInit & { skipAuth?: boolean; skipRefresh?: boolean };
+
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    if (!data.accessToken || !data.refreshToken) return false;
+    setTokens(data.accessToken, data.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function expireSession(): never {
+  clearTokens();
+  if (window.location.pathname !== '/auth') {
+    window.location.href = '/auth';
+  }
+  throw new ApiError('UNAUTHORIZED', 'Authentication session expired', 401);
+}
 
 export async function apiRequest<T>(
   path: string,
@@ -50,23 +79,39 @@ export async function apiRequest<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  let res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
-  if (res.status === 401 && !options.skipAuth) {
-    clearTokens();
-    if (window.location.pathname !== '/auth') {
-      window.location.href = '/auth';
+  if (res.status === 401 && !options.skipAuth && !options.skipRefresh) {
+    if (!refreshPromise) {
+      refreshPromise = refreshAccessToken().finally(() => {
+        refreshPromise = null;
+      });
     }
-    throw new ApiError('UNAUTHORIZED', 'Authentication session expired', 401);
+    const refreshed = await refreshPromise;
+    if (!refreshed) expireSession();
+
+    const nextToken = getAccessToken();
+    if (nextToken) {
+      headers.Authorization = `Bearer ${nextToken}`;
+    }
+    res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+    if (res.status === 401) expireSession();
   }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    const detail = body.detail;
+    const detailCode = typeof detail === 'object' && detail ? detail.code : undefined;
+    const detailMessage = typeof detail === 'string'
+      ? detail
+      : typeof detail === 'object' && detail
+        ? detail.message
+        : undefined;
     throw new ApiError(
-      body.detail?.code ?? body.code ?? 'UNKNOWN',
-      body.detail?.message ?? body.message ?? res.statusText,
+      detailCode ?? body.code ?? 'UNKNOWN',
+      detailMessage ?? body.message ?? res.statusText,
       res.status,
-      body.detail?.details ?? body.details,
+      (typeof detail === 'object' && detail ? detail.details : undefined) ?? body.details,
     );
   }
 
