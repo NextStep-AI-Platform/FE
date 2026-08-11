@@ -1,11 +1,11 @@
 import { apiRequest, setTokens, clearTokens } from './client';
 import type { PlanInfo, User } from '../../types';
 
-interface AuthResponse {
+export interface AuthResponse {
   user: User;
   plan: PlanInfo;
-  accessToken: string;
-  refreshToken: string;
+  accessToken?: string | null;
+  refreshToken?: string | null;
   scansRemaining?: number;
   isPremium?: boolean;
   isVip?: boolean;
@@ -17,7 +17,9 @@ export async function loginApi(email: string, password: string): Promise<AuthRes
     body: JSON.stringify({ email, password }),
     skipAuth: true,
   });
-  setTokens(data.accessToken, data.refreshToken);
+  if (data.accessToken && data.refreshToken) {
+    setTokens(data.accessToken, data.refreshToken);
+  }
   return data;
 }
 
@@ -27,7 +29,9 @@ export async function registerApi(name: string, email: string, password: string)
     body: JSON.stringify({ name, email, password }),
     skipAuth: true,
   });
-  setTokens(data.accessToken, data.refreshToken);
+  if (data.accessToken && data.refreshToken) {
+    setTokens(data.accessToken, data.refreshToken);
+  }
   return data;
 }
 
@@ -35,8 +39,7 @@ export async function fetchMe(): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/auth/me');
 }
 
-export async function logoutApi(): Promise<void> {
+export function logoutApi(): void {
   // Có thể backend không có route logout, nhưng clear local token là đủ
-  await apiRequest<void>('/auth/logout', { method: 'POST' }).catch(() => {});
   clearTokens();
 }

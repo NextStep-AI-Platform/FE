@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, FileText, X, ChevronDown, Loader2, Lock, History, Check, Circle } from 'lucide-react'
 import { INDUSTRIES, ROLES_BY_INDUSTRY } from '../constants'
@@ -27,6 +27,7 @@ function DualInputPanel({
   state,
   onChange,
   allowTextMode = true,
+  allowFileMode = true,
   textDisabledHint = 'Phát triển sau',
 }: {
   title: string
@@ -34,11 +35,17 @@ function DualInputPanel({
   state: PanelState
   onChange: (s: PanelState) => void
   allowTextMode?: boolean
+  allowFileMode?: boolean
   textDisabledHint?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
-  const effectiveMode = allowTextMode ? state.mode : 'file'
+  const effectiveMode =
+    state.mode === 'file' && !allowFileMode
+      ? 'text'
+      : state.mode === 'text' && !allowTextMode
+        ? 'file'
+        : state.mode
 
   const handleFile = (file: File | undefined) => {
     if (!file) return
@@ -55,13 +62,16 @@ function DualInputPanel({
       <div className="flex bg-ns-page border border-ns rounded-lg p-1 mb-4 shrink-0">
         {(['file', 'text'] as InputMode[]).map(m => {
           const isTextTab = m === 'text'
-          const disabled = isTextTab && !allowTextMode
+          const disabled = (isTextTab && !allowTextMode) || (!isTextTab && !allowFileMode)
+          const disabledHint = isTextTab
+            ? textDisabledHint
+            : 'Phase 1b chi ho tro noi dung text'
           return (
             <button
               key={m}
               type="button"
               disabled={disabled}
-              title={disabled ? textDisabledHint : undefined}
+              title={disabled ? disabledHint : undefined}
               onClick={() => {
                 if (disabled) return
                 onChange({ ...state, mode: m })
@@ -77,7 +87,7 @@ function DualInputPanel({
               {m === 'file' ? 'Tải file' : 'Dán nội dung'}
               {disabled && (
                 <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-10 hidden group-hover:block whitespace-nowrap rounded-md bg-ns-raised border border-ns px-2 py-1 text-[10px] text-ns-secondary shadow-lg">
-                  {textDisabledHint}
+                  {disabledHint}
                 </span>
               )}
             </button>
@@ -307,10 +317,19 @@ function ConfigPanel({
 export default function CVScanPage() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { user, cvFiles, addScan, addCVFile, canScan, scansRemaining, plan } = useApp()
+  const {
+    user,
+    cvFiles,
+    addScan,
+    addCVFile,
+    canScan,
+    scansRemaining,
+    plan,
+    refreshSession,
+  } = useApp()
 
-  const [cv, setCv] = useState<PanelState>({ mode: 'file', file: null, text: '' })
-  const [jd, setJd] = useState<PanelState>({ mode: 'file', file: null, text: '' })
+  const [cv, setCv] = useState<PanelState>({ mode: USE_API ? 'text' : 'file', file: null, text: '' })
+  const [jd, setJd] = useState<PanelState>({ mode: USE_API ? 'text' : 'file', file: null, text: '' })
   const [company, setCompany] = useState('')
   const [industry, setIndustry] = useState('')
   const [industryOther, setIndustryOther] = useState('')
@@ -320,6 +339,9 @@ export default function CVScanPage() {
   const [jdMinExpValue, setJdMinExpValue] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const pollController = useRef<AbortController | null>(null)
+
+  useEffect(() => () => pollController.current?.abort(), [])
 
   const quotaBlocked = plan.type === 'free' && !canScan()
   const roles = industry && industry !== '__other__' ? (ROLES_BY_INDUSTRY[industry] ?? []) : []
@@ -329,7 +351,7 @@ export default function CVScanPage() {
     : role === '__other__'
       ? roleOther.trim()
       : role.trim()
-  const hasCv = !!cv.file
+  const hasCv = !!(cv.file || cv.text.trim())
   const hasJd = !!(jd.file || jd.text.trim())
   const canStart = hasCv && hasJd && company.trim().length > 0 && resolvedRole.length > 0
 
@@ -347,8 +369,8 @@ export default function CVScanPage() {
   }
 
   const handleAnalyze = async () => {
-    if (!hasCv) { toast.error('Thiếu CV', 'Vui lòng tải file CV (PDF/DOCX)'); return }
-    if (!hasJd) { toast.error('Thiếu JD', 'Vui lòng tải file hoặc dán nội dung mô tả công việc (JD)'); return }
+    if (!hasCv) { toast.error('Thiếu CV', USE_API ? 'Vui lòng dán nội dung CV' : 'Vui lòng tải file CV (PDF/DOCX)'); return }
+    if (!hasJd) { toast.error('Thiếu JD', USE_API ? 'Vui lòng dán nội dung JD' : 'Vui lòng tải file hoặc dán nội dung JD'); return }
     if (!company.trim()) { toast.error('Thiếu tên công ty', 'Vui lòng nhập tên công ty để đặt tên kết quả'); return }
     if (!resolvedRole) { toast.error('Thiếu vị trí', 'Vui lòng chọn hoặc nhập vị trí ứng tuyển — tên này sẽ ghi vào kết quả quét CV'); return }
     if (!canScan()) {
@@ -356,12 +378,26 @@ export default function CVScanPage() {
       return
     }
 
+    if (USE_API && (cv.mode !== 'text' || jd.mode !== 'text')) {
+      toast.error('Chi ho tro noi dung text', 'Phase 1b chua ho tro tai file CV/JD')
+      return
+    }
+
     const cvInput = buildDocInput(cv)
     const jdInput = buildDocInput(jd)
-    const docCheck = validateScanDocuments(cvInput, jdInput)
-    if (!docCheck.ok) {
-      toast.error(docCheck.errorTitle ?? 'Tài liệu không hợp lệ', docCheck.errorMessage ?? '')
-      return
+    if (USE_API) {
+      const cvLength = cvInput.textContent?.trim().length ?? 0
+      const jdLength = jdInput.textContent?.trim().length ?? 0
+      if (cvLength > 100_000 || jdLength > 100_000) {
+        toast.error('Nội dung quá dài', 'CV và JD phải ngắn hơn 100.000 ký tự')
+        return
+      }
+    } else {
+      const docCheck = validateScanDocuments(cvInput, jdInput)
+      if (!docCheck.ok) {
+        toast.error(docCheck.errorTitle ?? 'Tài liệu không hợp lệ', docCheck.errorMessage ?? '')
+        return
+      }
     }
 
     if (cv.file && user) {
@@ -389,11 +425,14 @@ export default function CVScanPage() {
 
     if (USE_API) {
       try {
+        pollController.current?.abort()
+        pollController.current = new AbortController()
         const scan = await createScan({ cv: cvInput, jd: jdInput, config })
         await runScan(scan.id)
+        await refreshSession().catch(() => undefined)
         const analysisId = await pollScanUntilDone(scan.id, (data) => {
           setProgress(data.progressPercent)
-        })
+        }, { signal: pollController.current.signal })
         setAnalyzing(false)
         toast.success('Phân tích hoàn tất', 'Coverage Score đã được tạo bởi AI')
         navigate(`/analysis/${analysisId}`)
@@ -446,15 +485,22 @@ export default function CVScanPage() {
             <div className="h-full min-h-0 flex flex-col">
               <DualInputPanel
                 title="CV của bạn"
-                subtitle="Bắt buộc — tải file PDF hoặc DOCX"
+                subtitle={USE_API ? 'Bắt buộc - dán nội dung CV' : 'Bắt buộc - tải file PDF hoặc DOCX'}
                 state={cv}
                 onChange={setCv}
-                allowTextMode={false}
+                allowTextMode={USE_API}
+                allowFileMode={!USE_API}
                 textDisabledHint="Phát triển sau"
               />
             </div>
             <div className="h-full min-h-0 flex flex-col">
-              <DualInputPanel title="Mô tả công việc (JD)" subtitle="Bắt buộc — tải file JD hoặc dán nội dung mô tả công việc" state={jd} onChange={setJd} />
+              <DualInputPanel
+                title="Mô tả công việc (JD)"
+                subtitle={USE_API ? 'Bắt buộc - dán nội dung JD' : 'Bắt buộc - tải file JD hoặc dán nội dung'}
+                state={jd}
+                onChange={setJd}
+                allowFileMode={!USE_API}
+              />
             </div>
           </div>
           <div className="lg:flex-[1] h-[580px] lg:h-full min-h-0 flex flex-col mt-6 lg:mt-0">
@@ -479,7 +525,7 @@ export default function CVScanPage() {
           </div>
         </div>
 
-        {cvFiles.length > 0 && (
+        {!USE_API && cvFiles.length > 0 && (
           <div className="bg-ns-card border border-ns rounded-2xl p-5 mt-6 shadow-card animate-fade-in">
             <div className="flex items-center gap-3 mb-3">
               <History size={16} className="text-blue-400" />

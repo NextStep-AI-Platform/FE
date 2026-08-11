@@ -6,8 +6,15 @@ import { useToast } from "../contexts/ToastContext";
 import BrandName from "../components/BrandName";
 import LogoMark from "../components/LogoMark";
 import { PICTURE } from "../lib/picture";
+import { ApiError } from "../lib/api/client";
+import { USE_API } from "../lib/config";
 
 type Tab = "login" | "register";
+
+function getAuthErrorMessage(error: unknown): string {
+	if (error instanceof ApiError) return error.message;
+	return "Khong the ket noi den may chu. Vui long thu lai.";
+}
 
 export default function AuthPage() {
 	const navigate = useNavigate();
@@ -48,7 +55,7 @@ export default function AuthPage() {
 		return e;
 	};
 
-	const handleLogin = (e: React.FormEvent) => {
+	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
 		const errs = validateLogin();
 		if (Object.keys(errs).length > 0) {
@@ -57,19 +64,22 @@ export default function AuthPage() {
 		}
 		setErrors({});
 		setIsLoading(true);
-		setTimeout(() => {
-			const ok = login(loginForm.email, loginForm.password);
-			setIsLoading(false);
+		try {
+			const ok = await login(loginForm.email, loginForm.password);
 			if (ok) {
 				toast.success("Đăng nhập thành công");
 				navigate("/dashboard");
 			} else {
 				toast.error("Đăng nhập thất bại", "Email hoặc mật khẩu không đúng");
 			}
-		}, 800);
+		} catch (error) {
+			toast.error("Dang nhap that bai", getAuthErrorMessage(error));
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
-	const handleRegister = (e: React.FormEvent) => {
+	const handleRegister = async (e: React.FormEvent) => {
 		e.preventDefault();
 		const errs = validateRegister();
 		if (Object.keys(errs).length > 0) {
@@ -78,14 +88,18 @@ export default function AuthPage() {
 		}
 		setErrors({});
 		setIsLoading(true);
-		setTimeout(() => {
-			const ok = register(
+		try {
+			const ok = await register(
 				registerForm.name,
 				registerForm.email,
 				registerForm.password,
 			);
-			setIsLoading(false);
 			if (ok) {
+				if (USE_API) {
+					toast.success("Dang ky thanh cong", "Tai khoan da duoc tao va dang nhap");
+					navigate("/dashboard");
+					return;
+				}
 				toast.success("Đăng ký thành công", "Vui lòng đăng nhập để tiếp tục");
 				setTab("login");
 				setLoginForm({
@@ -95,7 +109,11 @@ export default function AuthPage() {
 			} else {
 				toast.error("Đăng ký thất bại", "Email đã được sử dụng");
 			}
-		}, 800);
+		} catch (error) {
+			toast.error("Dang ky that bai", getAuthErrorMessage(error));
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const handleGoogleLogin = () => {

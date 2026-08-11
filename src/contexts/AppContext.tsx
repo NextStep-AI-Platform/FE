@@ -2,6 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { PLAN_LIMITS } from '../constants'
 import { getItem, setItem, STORAGE_KEYS } from '../lib/storage'
 import { addDays, getMonthKey } from '../lib/utils'
+import { USE_API } from '../lib/config'
+import { fetchMe, loginApi, logoutApi, registerApi } from '../lib/api/auth'
+import type { AuthResponse } from '../lib/api/auth'
+import { clearTokens, getAccessToken } from '../lib/api/client'
 import type {
   AppNotification,
   AppState,
@@ -133,10 +137,12 @@ function commitPersisted(next: PersistedState) {
 }
 
 interface AppContextValue extends AppState {
-  login: (email: string, password: string) => boolean
+  isAuthReady: boolean
+  login: (email: string, password: string) => Promise<boolean>
   loginWithGoogleDemo: () => boolean
-  register: (name: string, email: string, password: string) => boolean
+  register: (name: string, email: string, password: string) => Promise<boolean>
   logout: () => void
+  refreshSession: () => Promise<void>
   deleteAccount: () => void
   upgradePlan: (type: 'premium' | 'vip', billing?: 'monthly' | 'quarterly') => void
   addScan: (scan: ScanRecord) => void
@@ -158,20 +164,60 @@ const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [persisted, setPersisted] = useState<PersistedState>(() => readPersisted())
+  const [apiSession, setApiSession] = useState<AuthResponse | null>(null)
+  const [isAuthReady, setIsAuthReady] = useState(!USE_API)
   const persistedRef = useRef(persisted)
   persistedRef.current = persisted
 
   useEffect(() => {
-    commitPersisted(persisted)
+    if (!USE_API) commitPersisted(persisted)
   }, [persisted])
+
+  const refreshSession = useCallback(async () => {
+    if (!USE_API || !getAccessToken()) return
+    const session = await fetchMe()
+    setApiSession(session)
+  }, [])
+
+  useEffect(() => {
+    if (!USE_API) return
+    let cancelled = false
+
+    const hydrate = async () => {
+      if (!getAccessToken()) {
+        setIsAuthReady(true)
+        return
+      }
+      try {
+        const session = await fetchMe()
+        if (!cancelled) setApiSession(session)
+      } catch {
+        clearTokens()
+        if (!cancelled) setApiSession(null)
+      } finally {
+        if (!cancelled) setIsAuthReady(true)
+      }
+    }
+
+    void hydrate()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const findAccountByEmail = (email: string, accounts: StoredAccount[]) =>
     accounts.find(a => a.user.email.toLowerCase() === email.trim().toLowerCase())
 
-  const login = useCallback((email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase()
     const trimmedPassword = password.trim()
     if (!normalizedEmail || trimmedPassword.length < 6) return false
+
+    if (USE_API) {
+      const session = await loginApi(normalizedEmail, trimmedPassword)
+      setApiSession(session)
+      return true
+    }
 
     const prev = readPersisted()
     const account = findAccountByEmail(normalizedEmail, prev.accounts)
@@ -198,6 +244,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loginWithGoogleDemo = useCallback(() => {
+    if (USE_API) return false
     const email = DEMO_GOOGLE_EMAIL
     const prev = readPersisted()
     const existing = findAccountByEmail(email, prev.accounts)
@@ -235,11 +282,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return true
   }, [])
 
-  const register = useCallback((name: string, email: string, password: string) => {
+  const register = useCallback(async (name: string, email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase()
     const trimmedPassword = password.trim()
     const trimmedName = name.trim()
     if (!normalizedEmail || trimmedPassword.length < 8) return false
+
+    if (USE_API) {
+      const session = await registerApi(trimmedName, normalizedEmail, trimmedPassword)
+      setApiSession(session)
+      return true
+    }
 
     const prev = readPersisted()
     const existing = findAccountByEmail(normalizedEmail, prev.accounts)
@@ -286,31 +339,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const user = useMemo(() => {
+    if (USE_API) return apiSession?.user ?? null
     if (!persisted.currentUserId) return null
     return persisted.accounts.find(a => a.user.id === persisted.currentUserId)?.user ?? null
-  }, [persisted])
+  }, [apiSession, persisted])
+
+  const activeUserId = user?.id ?? null
 
   const scans = useMemo(
-    () => persisted.scans.filter(s => s.userId === persisted.currentUserId),
-    [persisted.scans, persisted.currentUserId],
+    () => persisted.scans.filter(s => s.userId === activeUserId),
+    [persisted.scans, activeUserId],
   )
 
   const cvFiles = useMemo(
-    () => persisted.cvFiles.filter(f => f.userId === persisted.currentUserId),
-    [persisted.cvFiles, persisted.currentUserId],
+    () => persisted.cvFiles.filter(f => f.userId === activeUserId),
+    [persisted.cvFiles, activeUserId],
   )
 
   const interviews = useMemo(
-    () => persisted.interviews.filter(i => i.userId === persisted.currentUserId),
-    [persisted.interviews, persisted.currentUserId],
+    () => persisted.interviews.filter(i => i.userId === activeUserId),
+    [persisted.interviews, activeUserId],
   )
 
   const plan = useMemo(
-    () => getAccountPlan(persisted.accounts, persisted.currentUserId),
-    [persisted.accounts, persisted.currentUserId],
+    () => USE_API
+      ? apiSession?.plan ?? defaultPlan()
+      : getAccountPlan(persisted.accounts, persisted.currentUserId),
+    [apiSession, persisted.accounts, persisted.currentUserId],
   )
 
   const logout = useCallback(() => {
+    if (USE_API) {
+      logoutApi()
+      setApiSession(null)
+    }
     setPersisted(prev => ({ ...prev, currentUserId: null }))
   }, [])
 
@@ -430,18 +492,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const canScan = useCallback(() => {
     if (!user) return false
     if (plan.type !== 'free') return true
+    if (USE_API && apiSession?.scansRemaining !== undefined) {
+      return apiSession.scansRemaining > 0
+    }
     const monthKey = getMonthKey()
     const used = user.scansMonthKey === monthKey ? user.scansUsed : 0
     return used < PLAN_LIMITS.free.scansPerMonth
-  }, [user, plan.type])
+  }, [apiSession, user, plan.type])
 
   const scansRemaining = useCallback(() => {
     if (!user) return 0
     if (plan.type !== 'free') return 999
+    if (USE_API && apiSession?.scansRemaining !== undefined) {
+      return apiSession.scansRemaining
+    }
     const monthKey = getMonthKey()
     const used = user.scansMonthKey === monthKey ? user.scansUsed : 0
     return Math.max(0, PLAN_LIMITS.free.scansPerMonth - used)
-  }, [user, plan.type])
+  }, [apiSession, user, plan.type])
 
   const isPremium = useCallback(() => plan.type === 'premium' || plan.type === 'vip', [plan.type])
   const isVip = useCallback(() => plan.type === 'vip', [plan.type])
@@ -449,6 +517,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: AppContextValue = {
     user,
     isAuthenticated: !!user,
+    isAuthReady,
     plan,
     scans,
     cvFiles,
@@ -459,6 +528,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loginWithGoogleDemo,
     register,
     logout,
+    refreshSession,
     deleteAccount,
     upgradePlan,
     addScan,
@@ -473,7 +543,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     scansRemaining,
     isPremium,
     isVip,
-    getAccounts: () => persisted.accounts,
+    getAccounts: () => USE_API ? [] : persisted.accounts,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

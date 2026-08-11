@@ -32,32 +32,12 @@ export function clearTokens() {
 
 type RequestOptions = RequestInit & { skipAuth?: boolean };
 
-let refreshPromise: Promise<boolean> | null = null;
-
-async function refreshAccessToken(): Promise<boolean> {
-  const refresh = getRefreshToken();
-  if (!refresh) return false;
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: refresh }),
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    setTokens(data.accessToken, data.refreshToken);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
   if (!USE_API) {
-    throw new Error('API disabled — use mock AppContext');
+    throw new Error('API disabled - use mock AppContext');
   }
 
   const headers: Record<string, string> = {
@@ -70,23 +50,14 @@ export async function apiRequest<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  let res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
   if (res.status === 401 && !options.skipAuth) {
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-    const ok = await refreshPromise;
-    if (ok) {
-      headers.Authorization = `Bearer ${getAccessToken()}`;
-      res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-    } else {
-      clearTokens();
+    clearTokens();
+    if (window.location.pathname !== '/auth') {
       window.location.href = '/auth';
-      throw new ApiError('UNAUTHORIZED', 'Phiên đăng nhập hết hạn', 401);
     }
+    throw new ApiError('UNAUTHORIZED', 'Authentication session expired', 401);
   }
 
   if (!res.ok) {
