@@ -1,11 +1,17 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Star, FileText, Building2, BookOpen, Upload, Mic, Lock, ChevronRight, ScanLine, ExternalLink } from 'lucide-react'
+import { Star, FileText, Building2, BookOpen, Upload, Mic, Lock, ChevronRight, ScanLine, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react'
 import { PLAN_LIMITS, ROUTES } from '../constants'
 import { useApp } from '../contexts/AppContext'
 import { aggregateCourses, getQualifyingScans } from '../lib/dashboardInsights'
+import { getAnalysis, listAnalyses } from '../lib/api/analysis'
+import type { AnalysisListItem } from '../lib/api/analysis'
+import { USE_API } from '../lib/config'
 import { PICTURE } from '../lib/picture'
 import { formatDateTime, formatScanDisplayTitle, getScoreBarColor, getScoreLabel } from '../lib/utils'
+import type { ScanRecord } from '../types'
+
+const DASHBOARD_DETAIL_LIMIT = 10
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
@@ -26,18 +32,93 @@ export default function DashboardPage() {
   const { user, plan, scans, isPremium, isVip, scansRemaining } = useApp()
   const premium = isPremium()
   const vip = isVip()
+  const [remoteAnalyses, setRemoteAnalyses] = useState<AnalysisListItem[]>([])
+  const [remoteDetails, setRemoteDetails] = useState<ScanRecord[]>([])
+  const [analysisLoading, setAnalysisLoading] = useState(USE_API)
+  const [detailsLoading, setDetailsLoading] = useState(USE_API)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    if (!USE_API) return
+    let cancelled = false
+
+    setAnalysisLoading(true)
+    setDetailsLoading(true)
+    setAnalysisError(null)
+    setRemoteDetails([])
+
+    listAnalyses()
+      .then(async response => {
+        const sorted = [...response.items].sort(
+          (left, right) =>
+            new Date(right.analyzedAt).getTime() - new Date(left.analyzedAt).getTime(),
+        )
+        if (!cancelled) {
+          setRemoteAnalyses(sorted)
+          setAnalysisLoading(false)
+        }
+
+        const detailTargets = sorted.slice(
+          0,
+          premium ? DASHBOARD_DETAIL_LIMIT : Math.min(1, sorted.length),
+        )
+        const detailResults = await Promise.allSettled(
+          detailTargets.map(item => getAnalysis(item.id)),
+        )
+        if (!cancelled) {
+          setRemoteDetails(
+            detailResults.flatMap(result =>
+              result.status === 'fulfilled' ? [result.value] : [],
+            ),
+          )
+          setDetailsLoading(false)
+        }
+      })
+      .catch(error => {
+        console.error('Unable to load Dashboard analysis data', error)
+        if (!cancelled) {
+          setRemoteAnalyses([])
+          setRemoteDetails([])
+          setAnalysisError('Không thể đồng bộ dữ liệu phân tích. Vui lòng thử lại.')
+          setAnalysisLoading(false)
+          setDetailsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [premium, reloadKey])
+
+  const analysisSummaries = USE_API ? remoteAnalyses : scans
+  const analysisDetails = USE_API ? remoteDetails : scans
 
   const scansLimit = plan.type === 'free' ? PLAN_LIMITS.free.scansPerMonth : Infinity
   const remaining = scansRemaining()
-  const scansUsed = plan.type === 'free' ? scansLimit - remaining : scans.length
+  const scansUsed = plan.type === 'free' ? scansLimit - remaining : analysisSummaries.length
   const scansLeft = plan.type === 'free' ? remaining : Infinity
 
-  const latestScan = [...scans].sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime())[0]
-  const latestScores = latestScan?.result.scores
+  const sortedAnalyses = useMemo(
+    () => [...analysisSummaries].sort(
+      (left, right) =>
+        new Date(right.analyzedAt).getTime() - new Date(left.analyzedAt).getTime(),
+    ),
+    [analysisSummaries],
+  )
+  const latestAnalysis = sortedAnalyses[0]
+  const latestDetail = analysisDetails.find(item => item.id === latestAnalysis?.id)
+  const latestScores = latestDetail?.result.scores
   const scoreInfo = latestScores ? getScoreLabel(latestScores.overall) : null
-  const recentScans = [...scans].sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime()).slice(0, 3)
-  const qualifyingScans = useMemo(() => (premium ? getQualifyingScans(scans) : []), [premium, scans])
-  const aggregatedCourses = useMemo(() => (premium ? aggregateCourses(scans) : []), [premium, scans])
+  const recentScans = sortedAnalyses.slice(0, 3)
+  const qualifyingScans = useMemo(
+    () => (premium ? getQualifyingScans(analysisDetails) : []),
+    [premium, analysisDetails],
+  )
+  const aggregatedCourses = useMemo(
+    () => (premium ? aggregateCourses(analysisDetails) : []),
+    [premium, analysisDetails],
+  )
 
   const firstName = user?.name.split(' ').pop() ?? 'bạn'
 
@@ -90,10 +171,10 @@ export default function DashboardPage() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Điểm CV gần nhất', value: latestScan ? `${latestScan.overallScore}/100` : '—', icon: Star, color: 'keep-accent text-yellow-400', bg: 'bg-yellow-400/10', tile: 'stat-icon-tile-yellow' },
+          { label: 'Điểm CV gần nhất', value: analysisLoading ? '...' : latestAnalysis ? `${latestAnalysis.overallScore}/100` : '—', icon: Star, color: 'keep-accent text-yellow-400', bg: 'bg-yellow-400/10', tile: 'stat-icon-tile-yellow' },
           { label: 'Lượt scan còn lại', value: plan.type === 'free' ? `${scansLeft} lượt` : '∞', icon: ScanLine, color: scansLeft <= 1 && plan.type === 'free' ? 'keep-accent text-yellow-400' : 'keep-accent text-blue-400', bg: scansLeft <= 1 && plan.type === 'free' ? 'bg-yellow-400/10' : 'bg-blue-400/10', tile: scansLeft <= 1 && plan.type === 'free' ? 'stat-icon-tile-yellow' : 'stat-icon-tile-blue' },
-          { label: 'Công ty phù hợp', value: premium ? `${qualifyingScans.length} lượt` : '—', icon: Building2, color: 'keep-accent text-green-400', bg: 'bg-green-400/10', tile: 'stat-icon-tile-green' },
-          { label: 'Khoá học đề xuất', value: premium ? `${aggregatedCourses.length} khoá` : '—', icon: BookOpen, color: 'keep-accent text-purple-400', bg: 'bg-purple-400/10', tile: 'stat-icon-tile-purple' },
+          { label: 'Công ty phù hợp', value: premium ? (detailsLoading ? '...' : `${qualifyingScans.length} lượt`) : '—', icon: Building2, color: 'keep-accent text-green-400', bg: 'bg-green-400/10', tile: 'stat-icon-tile-green' },
+          { label: 'Khoá học đề xuất', value: premium ? (detailsLoading ? '...' : `${aggregatedCourses.length} khoá`) : '—', icon: BookOpen, color: 'keep-accent text-purple-400', bg: 'bg-purple-400/10', tile: 'stat-icon-tile-purple' },
         ].map(({ label, value, icon: Icon, color, bg, tile }) => (
           <div key={label} className="bg-ns-card border border-ns rounded-2xl p-5 card-interactive dashboard-stat-card">
             <div className={`w-10 h-10 ${bg} ${tile} stat-icon-tile rounded-xl flex items-center justify-center mb-3`}>
@@ -104,6 +185,19 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {analysisError && (
+        <div className="bg-ns-card border border-red-500/20 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <AlertCircle size={18} className="text-red-400 flex-shrink-0" />
+          <p className="text-ns-muted text-sm flex-1">{analysisError}</p>
+          <button
+            onClick={() => setReloadKey(value => value + 1)}
+            className="inline-flex items-center justify-center gap-2 text-blue-400 text-sm hover:text-blue-300 cursor-pointer"
+          >
+            <RefreshCw size={15} /> Thử lại
+          </button>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-5">
@@ -150,11 +244,13 @@ export default function DashboardPage() {
       </div>
 
       {/* CV Score Overview */}
-      {latestScan && latestScores && scoreInfo && (
+      {analysisLoading || detailsLoading ? (
+        <div className="h-56 bg-ns-card border border-ns rounded-2xl animate-pulse" aria-label="Đang tải điểm phân tích gần nhất" />
+      ) : latestAnalysis && latestScores && scoreInfo ? (
       <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-heading font-semibold text-ns-primary text-lg">Điểm phân tích CV gần nhất</h3>
-          <button onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(latestScan.id))} className="keep-accent text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer">
+          <button onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(latestAnalysis.id))} className="keep-accent text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer">
             Xem chi tiết <ChevronRight size={14} />
           </button>
         </div>
@@ -178,7 +274,22 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-      )}
+      ) : latestAnalysis ? (
+        <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <h3 className="font-heading font-semibold text-ns-primary mb-1">Điểm phân tích CV gần nhất</h3>
+            <p className="text-ns-muted text-sm">
+              Điểm tổng: <span className="text-blue-400 font-semibold">{latestAnalysis.overallScore}/100</span>. Chi tiết các thành phần chưa tải được.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(ROUTES.ANALYSIS_DETAIL(latestAnalysis.id))}
+            className="text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 cursor-pointer"
+          >
+            Mở kết quả <ChevronRight size={14} />
+          </button>
+        </div>
+      ) : null}
 
       {/* Recent Scans */}
       <div>
@@ -188,7 +299,13 @@ export default function DashboardPage() {
             Xem tất cả <ChevronRight size={14} />
           </button>
         </div>
-        {recentScans.length === 0 ? (
+        {analysisLoading ? (
+          <div className="space-y-3" aria-label="Đang tải lịch sử phân tích">
+            {[0, 1, 2].map(item => (
+              <div key={item} className="h-[70px] bg-ns-card border border-ns rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : recentScans.length === 0 ? (
           <div className="bg-ns-card border border-ns rounded-xl p-8 text-center shadow-card">
             <p className="text-ns-muted text-sm mb-3">Chưa có lần phân tích nào</p>
             <button onClick={() => navigate('/cv-scan')} className="keep-accent text-blue-400 text-sm hover:text-blue-300 cursor-pointer">Phân tích CV đầu tiên</button>
@@ -230,7 +347,11 @@ export default function DashboardPage() {
             {!premium && <span className="text-xs premium-lock-badge px-2 py-1 rounded-full flex items-center gap-1 keep-accent text-yellow-400"><Lock size={10} /> Premium</span>}
           </div>
           {premium ? (
-            qualifyingScans.length === 0 ? (
+            detailsLoading ? (
+              <div className="space-y-3" aria-label="Đang tải gợi ý công ty">
+                {[0, 1, 2].map(item => <div key={item} className="h-14 bg-ns-page rounded-xl animate-pulse" />)}
+              </div>
+            ) : qualifyingScans.length === 0 ? (
               <p className="text-ns-muted text-sm py-6 text-center">Chưa có lượt scan ≥70 điểm trong 30 ngày qua</p>
             ) : (
               <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
@@ -268,7 +389,11 @@ export default function DashboardPage() {
             {!premium && <span className="text-xs premium-lock-badge px-2 py-1 rounded-full flex items-center gap-1 keep-accent text-yellow-400"><Lock size={10} /> Premium</span>}
           </div>
           {premium ? (
-            aggregatedCourses.length === 0 ? (
+            detailsLoading ? (
+              <div className="space-y-3" aria-label="Đang tải khóa học đề xuất">
+                {[0, 1, 2].map(item => <div key={item} className="h-14 bg-ns-page rounded-xl animate-pulse" />)}
+              </div>
+            ) : aggregatedCourses.length === 0 ? (
               <p className="text-ns-muted text-sm py-6 text-center">Chưa có khoá học đề xuất trong 30 ngày qua</p>
             ) : (
               <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
