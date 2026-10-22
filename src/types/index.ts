@@ -53,6 +53,8 @@ export interface ScanConfig {
   /** Yêu cầu KN tối thiểu do user nhập khi JD thiếu thông tin (tùy chọn) */
   jdMinExperience?: number
   jdMinExperienceUnit?: ExperienceUnit
+  /** Canonical API contract: minimum experience in whole months. */
+  minExperienceMonths?: number
 }
 
 export interface CVScore {
@@ -277,3 +279,10 @@ export interface AppState {
   notifications: AppNotification[]
   hasSeenOnboarding: boolean
 }
+
+export type {
+  CVAnalysisReportV2,
+  CompatibleAnalysisReport,
+  RequirementMatchV2,
+  ReportEvidenceV2,
+} from './reportV2'

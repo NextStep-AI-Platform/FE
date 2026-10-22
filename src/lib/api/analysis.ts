@@ -1,4 +1,5 @@
 import type {
+  CompatibleAnalysisReport,
   CVAnalysisResult,
   DocumentInput,
   DocumentInputMode,
@@ -6,6 +7,7 @@ import type {
   ScanRecord,
 } from '../../types'
 import { apiRequest } from './client'
+import { isAnalysisReportV2, parseCompatibleAnalysisReport } from '../../types/reportV2'
 
 interface RawDocumentInput {
   mode?: DocumentInputMode | null
@@ -22,6 +24,7 @@ interface RawScanConfig {
   role?: string | null
   experienceFrom?: number | null
   experienceTo?: number | null
+  minExperienceMonths?: number | null
 }
 
 interface RawAnalysisListItem {
@@ -39,7 +42,7 @@ interface RawAnalysisListItem {
 }
 
 interface RawAnalysisDetailResponse extends RawAnalysisListItem {
-  result: CVAnalysisResult
+  result: unknown
 }
 
 export interface AnalysisListItem {
@@ -76,6 +79,9 @@ function normalizeConfig(config: RawScanConfig): ScanConfig {
       ? { experienceFrom: config.experienceFrom }
       : {}),
     ...(config.experienceTo != null ? { experienceTo: config.experienceTo } : {}),
+    ...(config.minExperienceMonths != null
+      ? { minExperienceMonths: config.minExperienceMonths }
+      : {}),
   }
 }
 
@@ -105,7 +111,11 @@ export async function listAnalyses(): Promise<{ items: AnalysisListItem[] }> {
 
 export async function getAnalysis(id: string): Promise<ScanRecord> {
   const response = await apiRequest<RawAnalysisDetailResponse>(`/analysis/${id}`)
-  const item = normalizeListItem(response, response.result)
+  const report = parseCompatibleAnalysisReport(response.result)
+  if (isAnalysisReportV2(report)) {
+    throw new Error('Analysis Report V2 is available but requires the V2 report UI.')
+  }
+  const item = normalizeListItem(response, report)
   return {
     id: item.id,
     userId: item.userId,
@@ -117,6 +127,14 @@ export async function getAnalysis(id: string): Promise<ScanRecord> {
     cvInput: item.cvInput,
     jdInput: item.jdInput,
     config: item.config,
-    result: response.result,
+    result: report,
   }
+}
+
+/** Read either contract version without fabricating a V1-shaped report. */
+export async function getCompatibleAnalysisReport(
+  id: string,
+): Promise<CompatibleAnalysisReport> {
+  const response = await apiRequest<RawAnalysisDetailResponse>(`/analysis/${id}`)
+  return parseCompatibleAnalysisReport(response.result)
 }

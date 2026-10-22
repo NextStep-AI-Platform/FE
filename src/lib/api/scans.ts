@@ -1,5 +1,6 @@
 import { apiRequest } from './client';
 import type { ScanConfig, DocumentInput } from '../../types';
+import { toMinExperienceMonths } from '../experienceContract';
 
 export interface ScanStatus {
   id: string;
@@ -39,8 +40,12 @@ export async function createScan(payload: {
   formData.append('config_company', payload.config.company || '');
   formData.append('config_role', payload.config.role || '');
   formData.append('config_industry', payload.config.industry || '');
-  if (payload.config.jdMinExperience !== undefined) {
-    formData.append('config_experience_from', String(payload.config.jdMinExperience));
+  const minExperienceMonths = payload.config.minExperienceMonths ?? toMinExperienceMonths(
+    payload.config.jdMinExperience,
+    payload.config.jdMinExperienceUnit,
+  );
+  if (minExperienceMonths !== undefined) {
+    formData.append('config_min_experience_months', String(minExperienceMonths));
   }
 
   return apiRequest<{ id: string; status: string }>('/scans', {

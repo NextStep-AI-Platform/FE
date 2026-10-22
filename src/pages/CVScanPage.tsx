@@ -10,6 +10,7 @@ import { USE_API } from '../lib/config'
 import { createScan, runScan, pollScanUntilDone } from '../lib/api/scans'
 import { validateScanDocuments } from '../lib/cvJdMatch'
 import { ANALYSIS_PROGRESS_STEPS, getAnalysisStepStatus } from '../lib/analysisProgress'
+import { toMinExperienceMonths } from '../lib/experienceContract'
 import type { CVFileRecord, DocumentInput, ExperienceUnit, ScanConfig, ScanRecord } from '../types'
 
 type InputMode = 'file' | 'text'
@@ -419,6 +420,7 @@ export default function CVScanPage() {
         ? {
             jdMinExperience: Number(jdMinExpValue),
             jdMinExperienceUnit: jdMinExpUnit,
+            minExperienceMonths: toMinExperienceMonths(Number(jdMinExpValue), jdMinExpUnit),
           }
         : {}),
     }
