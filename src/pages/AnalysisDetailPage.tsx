@@ -530,7 +530,7 @@ export default function AnalysisDetailPage() {
           <Lock size={28} className="text-blue-400 mx-auto mb-4" />
           <h3 className="font-heading font-semibold text-ns-primary text-xl mb-2">Tính năng Premium</h3>
           <p className="text-ns-muted text-sm mb-6">
-            Nâng cấp Premium để xem {activeTab === 'jobs' ? 'công việc phù hợp' : 'khoá học đề xuất'}
+            Mục {activeTab === 'jobs' ? 'công việc phù hợp' : 'khoá học đề xuất'} chưa khả dụng với gói hiện tại. Xem trang gói dịch vụ để biết quyền lợi đang áp dụng.
           </p>
           <button onClick={() => navigate('/pricing')} className="btn-primary text-sm">
             Xem gói Premium <ChevronRight size={16} className="inline ml-1" />

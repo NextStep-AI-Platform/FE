@@ -37,6 +37,8 @@ export default function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
         </Route>
 
         <Route
@@ -51,8 +53,6 @@ export default function App() {
           <Route path="/analysis" element={<AnalysisListPage />} />
           <Route path="/analysis/:id" element={<AnalysisDetailPage />} />
           <Route path="/mock-interview" element={<MockInterviewPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/payment" element={<PaymentPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 

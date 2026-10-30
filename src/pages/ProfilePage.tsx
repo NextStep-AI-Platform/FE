@@ -138,7 +138,7 @@ export default function ProfilePage() {
             )}
             {plan.type === 'free' && (
               <button onClick={() => navigate('/pricing')} className="mt-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white text-xs font-semibold px-4 py-1.5 rounded-lg hover:opacity-90 transition cursor-pointer">
-                Nâng cấp Premium
+                Xem các gói
               </button>
             )}
           </div>
@@ -147,7 +147,7 @@ export default function ProfilePage() {
           {[
             { label: 'Tổng lần phân tích', value: scans.length },
             { label: 'Điểm cao nhất', value: bestScore ? `${bestScore}/100` : '—' },
-            { label: 'Scan còn lại', value: plan.type === 'free' ? scansRemaining() : '∞' },
+            { label: 'Scan còn lại', value: scansRemaining() },
           ].map(({ label, value }) => (
             <div key={label} className="text-center">
               <p className="font-heading font-bold text-blue-400 text-2xl">{value}</p>

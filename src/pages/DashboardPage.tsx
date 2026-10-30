@@ -94,10 +94,10 @@ export default function DashboardPage() {
   const analysisSummaries = USE_API ? remoteAnalyses : scans
   const analysisDetails = USE_API ? remoteDetails : scans
 
-  const scansLimit = plan.type === 'free' ? PLAN_LIMITS.free.scansPerMonth : Infinity
+  const scansLimit = plan.type === 'free' ? PLAN_LIMITS.free.scansPerMonth : 15
   const remaining = scansRemaining()
-  const scansUsed = plan.type === 'free' ? scansLimit - remaining : analysisSummaries.length
-  const scansLeft = plan.type === 'free' ? remaining : Infinity
+  const scansUsed = scansLimit - remaining
+  const scansLeft = remaining
 
   const sortedAnalyses = useMemo(
     () => [...analysisSummaries].sort(
@@ -133,9 +133,9 @@ export default function DashboardPage() {
             </h2>
             <p className="text-ns-muted text-sm">
               {plan.type === 'free' ? (
-                <>Bạn đã sử dụng <span className={scansLeft <= 1 ? 'text-yellow-400 font-semibold' : 'text-ns-primary font-semibold'}>{scansUsed}/{scansLimit}</span> lượt phân tích CV miễn phí tháng này</>
+                <>Bạn đã sử dụng <span className={scansLeft <= 1 ? 'text-yellow-400 font-semibold' : 'text-ns-primary font-semibold'}>{scansUsed}/{scansLimit}</span> lượt phân tích CV tháng này</>
               ) : (
-                <>Gói {plan.type === 'vip' ? 'VIP' : 'Premium'} — phân tích CV không giới hạn</>
+                <>Gói {plan.type === 'vip' ? 'VIP' : 'Premium'} — tối đa 15 lượt phân tích CV/tháng</>
               )}
             </p>
             {plan.type === 'free' && (
@@ -152,7 +152,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/pricing')}
               className="flex-shrink-0 bg-gradient-to-r from-blue-500 to-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer"
             >
-              ✨ Nâng cấp Premium
+              Xem các gói
             </button>
           )}
         </div>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
             style={{ backgroundImage: `url(${PICTURE.dashboardPremiumBanner})`, backgroundSize: 'cover', backgroundPosition: 'right' }}
           >
             <div className="absolute inset-0 bg-ns-card/85" />
-            <span className="text-blue-400 text-sm relative z-10">🚀 Nâng cấp Premium để scan không giới hạn và nhận insight chuyên sâu từ AI</span>
+            <span className="text-blue-400 text-sm relative z-10">Gói Free có 3 lượt scan mỗi tháng. Xem trang gói dịch vụ để biết trạng thái thanh toán.</span>
             <button onClick={() => navigate('/pricing')} className="flex-shrink-0 text-blue-400 text-xs underline cursor-pointer hover:text-blue-300 relative z-10">Xem gói</button>
           </div>
         )}
@@ -172,7 +172,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Điểm CV gần nhất', value: analysisLoading ? '...' : latestAnalysis ? `${latestAnalysis.overallScore}/100` : '—', icon: Star, color: 'keep-accent text-yellow-400', bg: 'bg-yellow-400/10', tile: 'stat-icon-tile-yellow' },
-          { label: 'Lượt scan còn lại', value: plan.type === 'free' ? `${scansLeft} lượt` : '∞', icon: ScanLine, color: scansLeft <= 1 && plan.type === 'free' ? 'keep-accent text-yellow-400' : 'keep-accent text-blue-400', bg: scansLeft <= 1 && plan.type === 'free' ? 'bg-yellow-400/10' : 'bg-blue-400/10', tile: scansLeft <= 1 && plan.type === 'free' ? 'stat-icon-tile-yellow' : 'stat-icon-tile-blue' },
+          { label: 'Lượt scan còn lại', value: `${scansLeft} lượt`, icon: ScanLine, color: scansLeft <= 1 ? 'keep-accent text-yellow-400' : 'keep-accent text-blue-400', bg: scansLeft <= 1 ? 'bg-yellow-400/10' : 'bg-blue-400/10', tile: scansLeft <= 1 ? 'stat-icon-tile-yellow' : 'stat-icon-tile-blue' },
           { label: 'Công ty phù hợp', value: premium ? (detailsLoading ? '...' : `${qualifyingScans.length} lượt`) : '—', icon: Building2, color: 'keep-accent text-green-400', bg: 'bg-green-400/10', tile: 'stat-icon-tile-green' },
           { label: 'Khoá học đề xuất', value: premium ? (detailsLoading ? '...' : `${aggregatedCourses.length} khoá`) : '—', icon: BookOpen, color: 'keep-accent text-purple-400', bg: 'bg-purple-400/10', tile: 'stat-icon-tile-purple' },
         ].map(({ label, value, icon: Icon, color, bg, tile }) => (
@@ -232,7 +232,7 @@ export default function DashboardPage() {
           <p className="text-ns-muted text-sm mb-5 leading-relaxed">Mô phỏng buổi phỏng vấn thực tế với AI cho vị trí bạn muốn</p>
           {!vip ? (
             <button onClick={() => navigate('/pricing')} className="border border-blue-500/40 text-blue-400 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-500/10 transition cursor-pointer flex items-center gap-2">
-              <Lock size={14} /> Nâng cấp VIP để dùng
+              <Lock size={14} /> Xem gói VIP
             </button>
           ) : (
             <button onClick={() => navigate('/mock-interview')} className="bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer flex items-center gap-2">
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                 <div className="bg-ns-card border border-blue-500/30 rounded-2xl p-5 text-center mx-4">
                   <Lock size={24} className="text-blue-400 mx-auto mb-2" />
                   <p className="text-ns-primary text-sm font-semibold mb-3">Mở khóa gợi ý công ty</p>
-                  <button onClick={() => navigate('/pricing')} className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Nâng cấp Premium</button>
+                  <button onClick={() => navigate('/pricing')} className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Xem các gói</button>
                 </div>
               </div>
             </>
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                 <div className="bg-ns-card border border-blue-500/30 rounded-2xl p-5 text-center mx-4">
                   <Lock size={24} className="text-blue-400 mx-auto mb-2" />
                   <p className="text-ns-primary text-sm font-semibold mb-3">Mở khóa gợi ý khoá học</p>
-                  <button onClick={() => navigate('/pricing')} className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Nâng cấp Premium</button>
+                  <button onClick={() => navigate('/pricing')} className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Xem các gói</button>
                 </div>
               </div>
             </>
