@@ -115,7 +115,12 @@ export function validateExperienceRange(from: number, to: number): boolean {
 }
 
 export function getMonthKey(date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit',
+  }).formatToParts(date)
+  const year = parts.find(part => part.type === 'year')?.value
+  const month = parts.find(part => part.type === 'month')?.value
+  return `${year}-${month}`
 }
 
 export function addDays(date: Date, days: number): string {

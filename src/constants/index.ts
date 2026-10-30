@@ -65,8 +65,8 @@ export const VIP_INTERVIEW_TOTAL = 5
 
 export const PLAN_LIMITS = {
   free: { scansPerMonth: 3, hasCompanyMatch: false, hasCourses: false, hasInterview: false },
-  premium: { scansPerMonth: Infinity, hasCompanyMatch: true, hasCourses: true, hasInterview: false },
-  vip: { scansPerMonth: Infinity, hasCompanyMatch: true, hasCourses: true, hasInterview: true },
+  premium: { scansPerMonth: 15, hasCompanyMatch: true, hasCourses: true, hasInterview: false },
+  vip: { scansPerMonth: 15, hasCompanyMatch: true, hasCourses: true, hasInterview: true },
 } as const
 
 export const METRIC_TOOLTIPS: Record<string, string> = {

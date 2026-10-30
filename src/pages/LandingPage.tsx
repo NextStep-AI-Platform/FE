@@ -1,13 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
 	Upload,
 	Brain,
 	BarChart2,
 	Star,
-	Building2,
-	BookOpen,
-	Mic,
 	Check,
 	X,
 	Menu,
@@ -21,12 +18,24 @@ import BrandName from "../components/BrandName";
 import LogoMark from "../components/LogoMark";
 import AssetImage from "../components/AssetImage";
 import ScrollReveal from "../components/ScrollReveal";
-import FeedbackCarousel from "../components/FeedbackCarousel";
 import { PICTURE } from "../lib/picture";
+import { getBillingCatalog } from "../lib/api/billing";
+import type { BillingCatalog } from "../lib/api/billing";
+import { USE_API } from "../lib/config";
 
 export default function LandingPage() {
 	const navigate = useNavigate();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const [billingCatalog, setBillingCatalog] = useState<BillingCatalog | null>(null);
+	useEffect(() => {
+		if (!USE_API) return;
+		let mounted = true;
+		getBillingCatalog().then(data => { if (mounted) setBillingCatalog(data); }).catch(() => {});
+		return () => { mounted = false; };
+	}, []);
+	const planPrice = (sku: string, fallback: number) =>
+		(billingCatalog?.plans.find(item => item.sku === sku)?.priceVnd ?? fallback).toLocaleString('vi-VN') + 'đ';
+	const salesOpen = billingCatalog?.checkoutEnabled && billingCatalog.plans.some(item => item.status === 'active');
 
 	return (
 		<div className="min-h-screen bg-ns-page font-body">
@@ -249,19 +258,19 @@ export default function LandingPage() {
 								step: "01",
 								icon: Upload,
 								title: "Tải lên CV",
-								desc: "Tải lên CV PDF hoặc paste nội dung trực tiếp. Hỗ trợ mọi định dạng phổ biến.",
+								desc: "Tải CV PDF/DOCX hoặc dán nội dung trực tiếp.",
 							},
 							{
 								step: "02",
 								icon: Brain,
 								title: "AI Phân Tích",
-								desc: "AI đánh giá CV theo ngành nghề và tình hình thị trường lao động hiện tại.",
+								desc: "Phân tích nội dung CV so với mô tả công việc bạn cung cấp.",
 							},
 							{
 								step: "03",
 								icon: BarChart2,
 								title: "Nhận Kết Quả",
-								desc: "Nhận điểm số, điểm mạnh/yếu, khoá học đề xuất và gợi ý công ty phù hợp.",
+								desc: "Xem điểm số và các gợi ý cải thiện CV.",
 							},
 						].map(({ step, icon: Icon, title, desc }, i) => (
 							<ScrollReveal key={i} delay={i * 100} direction="up">
@@ -310,28 +319,7 @@ export default function LandingPage() {
 								color: "text-yellow-400",
 								bg: "bg-yellow-400/10",
 								title: "Chấm điểm CV bằng AI",
-								desc: "Phân tích CV theo ngành nghề mục tiêu, kiểm tra ATS-compatibility, keyword gap và chất lượng trình bày.",
-							},
-							{
-								icon: Building2,
-								color: "text-green-400",
-								bg: "bg-green-400/10",
-								title: "Gợi ý công ty phù hợp",
-								desc: "So sánh CV với JD thực tế, xếp hạng độ tương thích với các doanh nghiệp đang tuyển dụng.",
-							},
-							{
-								icon: BookOpen,
-								color: "text-purple-400",
-								bg: "bg-purple-400/10",
-								title: "Lộ trình học tập",
-								desc: "Đề xuất khoá học từ Udemy, Coursera cho từng kỹ năng còn thiếu dựa trên phân tích CV.",
-							},
-							{
-								icon: Mic,
-								color: "text-blue-400",
-								bg: "bg-blue-400/10",
-								title: "AI Mock Interview",
-								desc: "Luyện phỏng vấn 1-1 với AI theo đúng vị trí và ngành nghề. Có phân tích chi tiết câu trả lời.",
+								desc: "So sánh CV với JD bạn nhập và xem gợi ý cải thiện.",
 							},
 						].map(({ icon: Icon, color, bg, title, desc }, i) => (
 							<ScrollReveal
@@ -358,30 +346,6 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* ── TESTIMONIALS ── */}
-			<FeedbackCarousel />
-
-			{/* ── STATS ── */}
-			<section className="bg-ns-card/50 py-16">
-				<div className="max-w-7xl mx-auto px-6">
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-						{[
-							{ value: "10.000+", label: "Người dùng đã phân tích CV" },
-							{ value: "95%", label: "Người dùng cải thiện CV sau lần đầu" },
-							{ value: "500+", label: "Công ty trong cơ sở dữ liệu" },
-						].map(({ value, label }, i) => (
-							<ScrollReveal key={label} delay={i * 100} direction="up">
-								<div className="badge-pill py-4">
-									<div className="font-heading text-4xl md:text-5xl font-bold keep-accent bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent mb-2">
-										{value}
-									</div>
-									<p className="text-ns-muted text-sm">{label}</p>
-								</div>
-							</ScrollReveal>
-						))}
-					</div>
-				</div>
-			</section>
 
 			{/* ── PRICING ── */}
 			<section id="pricing" className="py-20">
@@ -391,7 +355,7 @@ export default function LandingPage() {
 							Bảng giá minh bạch
 						</h2>
 						<p className="text-ns-muted text-lg">
-							Bắt đầu miễn phí, nâng cấp khi cần
+							{salesOpen ? 'Mua trước một lần, không tự gia hạn. Xem chi tiết và điều kiện mua trên trang gói dịch vụ.' : 'Thanh toán hiện chưa khả dụng. Gói Free vẫn hoạt động.'}
 						</p>
 					</ScrollReveal>
 
@@ -415,7 +379,7 @@ export default function LandingPage() {
 										"3 lần scan CV/tháng",
 										"Phân tích keyword cơ bản",
 										"Chấm điểm tổng thể",
-										"Lộ trình học tổng quát",
+										"Gợi ý cải thiện tổng quát",
 									].map((f) => (
 										<li
 											key={f}
@@ -452,29 +416,23 @@ export default function LandingPage() {
 
 						<ScrollReveal delay={100} direction="up">
 							<div className="relative landing-premium-card bg-gradient-to-b from-[#1E3A5F] to-[#1E293B] border-2 border-blue-500 rounded-2xl p-7 flex flex-col card-interactive h-full">
-								<div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-semibold px-4 py-1 rounded-full badge-pill">
-									⭐ Phổ biến nhất
-								</div>
 								<p className="text-blue-400 keep-accent text-xs font-semibold uppercase tracking-wider mb-3">
 									Premium Analysis
 								</p>
 								<div className="mb-1">
 									<span className="font-heading text-4xl font-bold text-white">
-										49.000đ
+										{planPrice('premium-30', 49000)}
 									</span>
-									<span className="text-ns-muted text-sm ml-2">/tháng</span>
+									<span className="text-ns-muted text-sm ml-2">/30 ngày</span>
 								</div>
-								<p className="text-ns-faint text-xs mb-5">hoặc 99.000đ</p>
+								<p className="text-ns-faint text-xs mb-5">90 ngày: {planPrice('premium-90', 99000)} · {salesOpen ? 'Xem điều kiện mua' : 'Chưa nhận thanh toán'}</p>
 								<p className="text-ns-muted text-sm mb-6">
 									Dành cho người tìm việc nghiêm túc
 								</p>
 								<ul className="space-y-3 mb-8 flex-1">
 									{[
-										"Scan CV không giới hạn",
-										"Phân tích ATS chi tiết",
-										"Chỉnh sửa CV bằng AI",
-										"Lộ trình học + link khoá học",
-										"Gợi ý công ty phù hợp",
+										"15 lượt phân tích CV/tháng",
+										"Xem quyền lợi đang áp dụng trên trang gói dịch vụ",
 									].map((f) => (
 										<li
 											key={f}
@@ -495,12 +453,6 @@ export default function LandingPage() {
 										AI Mock Interview
 									</li>
 								</ul>
-								<button
-									onClick={() => navigate("/auth")}
-									className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition cursor-pointer"
-								>
-									Nâng cấp ngay
-								</button>
 							</div>
 						</ScrollReveal>
 
@@ -511,24 +463,21 @@ export default function LandingPage() {
 								</p>
 								<div className="mb-1">
 									<span className="font-heading text-4xl font-bold text-ns-primary">
-										149.000đ
+										{planPrice('vip-30', 149000)}
 									</span>
-									<span className="text-ns-muted text-sm ml-2">/5 buổi</span>
+									<span className="text-ns-muted text-sm ml-2">/30 ngày</span>
 								</div>
 								<p className="text-ns-faint text-xs mb-5">
-									Lẻ: 19.000–29.000đ/buổi
+									90 ngày: {planPrice('vip-90', 299000)} · {salesOpen ? 'Xem điều kiện mua' : 'Chưa nhận thanh toán'}
 								</p>
 								<p className="text-ns-muted text-sm mb-6">
 									Dành cho bạn chuẩn bị phỏng vấn thực tế
 								</p>
 								<ul className="space-y-3 mb-8 flex-1">
 									{[
-										"5 buổi phỏng vấn AI 1-1",
-										"Câu hỏi theo ngành nghề & vị trí",
-										"Điều chỉnh độ khó (Dễ/Vừa/Khó)",
-										"Báo cáo lỗi chi tiết từng câu",
-										"Câu trả lời mẫu chuẩn chuyên gia",
-										"Bao gồm scan CV không giới hạn",
+										"15 lượt phân tích CV/tháng",
+										"5/15 lượt phỏng vấn theo kỳ hạn 30/90 ngày",
+										"Xem quyền lợi đang áp dụng trên trang gói dịch vụ",
 									].map((f) => (
 										<li
 											key={f}
@@ -542,12 +491,6 @@ export default function LandingPage() {
 										</li>
 									))}
 								</ul>
-								<button
-									onClick={() => navigate("/pricing")}
-									className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition cursor-pointer"
-								>
-									Mua gói VIP
-								</button>
 							</div>
 						</ScrollReveal>
 					</div>

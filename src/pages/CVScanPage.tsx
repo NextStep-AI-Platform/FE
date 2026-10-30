@@ -376,7 +376,7 @@ export default function CVScanPage() {
     if (!company.trim()) { toast.error('Thiếu tên công ty', 'Vui lòng nhập tên công ty để đặt tên kết quả'); return }
     if (!resolvedRole) { toast.error('Thiếu vị trí', 'Vui lòng chọn hoặc nhập vị trí ứng tuyển — tên này sẽ ghi vào kết quả quét CV'); return }
     if (!canScan()) {
-      toast.warning('Hết lượt scan miễn phí', 'Nâng cấp Premium để phân tích CV không giới hạn')
+      toast.warning('Hết lượt scan tháng này', 'Bạn có thể tiếp tục khi quota được làm mới. Xem trang gói dịch vụ để biết các lựa chọn hiện có.')
       return
     }
 
@@ -484,7 +484,7 @@ export default function CVScanPage() {
         <div className="animate-fade-in">
           <h2 className="font-heading font-bold text-ns-primary text-2xl">Phân tích CV</h2>
           <p className="text-ns-muted text-sm mt-1">
-            Tải hoặc dán CV và JD · Còn {scansRemaining()} lượt scan miễn phí tháng này
+            Tải hoặc dán CV và JD · Còn {scansRemaining()} lượt scan tháng này
           </p>
         </div>
 
@@ -561,10 +561,10 @@ export default function CVScanPage() {
             <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lock size={32} className="text-blue-400" />
             </div>
-            <h3 className="font-heading font-bold text-ns-primary text-xl mb-2">Bạn đã hết lượt scan miễn phí</h3>
-            <p className="text-ns-muted text-sm mb-6">Nâng cấp Premium để phân tích CV không giới hạn và nhận insight chuyên sâu</p>
+            <h3 className="font-heading font-bold text-ns-primary text-xl mb-2">Bạn đã hết lượt scan tháng này</h3>
+            <p className="text-ns-muted text-sm mb-6">Gói {plan.type === 'free' ? 'Free' : plan.type === 'vip' ? 'VIP' : 'Premium'} hiện không còn lượt. Quota sẽ được làm mới vào tháng sau.</p>
             <div className="flex flex-col lg:flex-row lg:gap-3">
-              <button onClick={() => navigate('/pricing')} className="btn-primary w-full">Nâng cấp Premium</button>
+              <button onClick={() => navigate('/pricing')} className="btn-primary w-full">Xem các gói</button>
               <button onClick={() => navigate('/dashboard')} className="border border-ns text-ns-secondary py-2.5 rounded-xl cursor-pointer hover:bg-ns-raised">Quay lại Dashboard</button>
             </div>
           </div>

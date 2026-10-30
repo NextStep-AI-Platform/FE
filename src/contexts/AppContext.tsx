@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { PLAN_LIMITS } from '../constants'
 import { getItem, setItem, STORAGE_KEYS } from '../lib/storage'
-import { addDays, getMonthKey } from '../lib/utils'
+import { getMonthKey } from '../lib/utils'
 import { USE_API } from '../lib/config'
 import { fetchMe, loginApi, logoutApi, registerApi } from '../lib/api/auth'
 import type { AuthResponse } from '../lib/api/auth'
@@ -127,11 +127,6 @@ function readPersisted(): PersistedState {
   return migratePersisted(getItem(STORAGE_KEYS.APP_STATE))
 }
 
-function getAccountPlan(accounts: StoredAccount[], userId: string | null): PlanInfo {
-  if (!userId) return defaultPlan()
-  return accounts.find(a => a.user.id === userId)?.planInfo ?? defaultPlan()
-}
-
 function commitPersisted(next: PersistedState) {
   setItem(STORAGE_KEYS.APP_STATE, next)
 }
@@ -144,7 +139,6 @@ interface AppContextValue extends AppState {
   logout: () => void
   refreshSession: () => Promise<void>
   deleteAccount: () => void
-  upgradePlan: (type: 'premium' | 'vip', billing?: 'monthly' | 'quarterly') => void
   addScan: (scan: ScanRecord) => void
   addCVFile: (file: CVFileRecord) => void
   updateUser: (patch: Partial<User>) => void
@@ -341,7 +335,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const user = useMemo(() => {
     if (USE_API) return apiSession?.user ?? null
     if (!persisted.currentUserId) return null
-    return persisted.accounts.find(a => a.user.id === persisted.currentUserId)?.user ?? null
+    const storedUser = persisted.accounts.find(a => a.user.id === persisted.currentUserId)?.user
+    // Legacy demo storage is not proof of payment. Never surface a local paid plan.
+    return storedUser ? { ...storedUser, plan: 'free' as const, scansLimit: PLAN_LIMITS.free.scansPerMonth } : null
   }, [apiSession, persisted])
 
   const activeUserId = user?.id ?? null
@@ -364,8 +360,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const plan = useMemo(
     () => USE_API
       ? apiSession?.plan ?? defaultPlan()
-      : getAccountPlan(persisted.accounts, persisted.currentUserId),
-    [apiSession, persisted.accounts, persisted.currentUserId],
+      : defaultPlan(),
+    [apiSession],
   )
 
   const logout = useCallback(() => {
@@ -384,37 +380,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }))
   }, [user])
 
-  const upgradePlan = useCallback((type: 'premium' | 'vip', billing: 'monthly' | 'quarterly' = 'monthly') => {
-    const now = new Date()
-    const days = type === 'vip' ? 30 : billing === 'quarterly' ? 90 : 30
-    const plan: PlanInfo = {
-      type,
-      startedAt: now.toISOString(),
-      expiresAt: addDays(now, days),
-      interviewSessionsLeft: type === 'vip' ? 5 : 0,
-    }
-    setPersisted(prev => ({
-      ...prev,
-      accounts: prev.accounts.map(a =>
-        prev.currentUserId === a.user.id
-          ? { ...a, planInfo: plan, user: { ...a.user, plan: type, scansLimit: 9999 } }
-          : a,
-      ),
-    }))
-  }, [])
-
   const addScan = useCallback((scan: ScanRecord) => {
     setPersisted(prev => {
       if (!prev.currentUserId) return prev
       const monthKey = getMonthKey()
-      const userPlan = getAccountPlan(prev.accounts, prev.currentUserId)
       const accounts = prev.accounts.map(a => {
         if (a.user.id !== prev.currentUserId) return a
         let scansUsed = a.user.scansUsed
         if (a.user.scansMonthKey !== monthKey) {
           scansUsed = 0
         }
-        if (userPlan.type === 'free') scansUsed += 1
+        scansUsed += 1
         return {
           ...a,
           user: {
@@ -491,24 +467,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const canScan = useCallback(() => {
     if (!user) return false
-    if (plan.type !== 'free') return true
     if (USE_API && apiSession?.scansRemaining !== undefined) {
       return apiSession.scansRemaining > 0
     }
     const monthKey = getMonthKey()
     const used = user.scansMonthKey === monthKey ? user.scansUsed : 0
-    return used < PLAN_LIMITS.free.scansPerMonth
+    return used < PLAN_LIMITS[plan.type].scansPerMonth
   }, [apiSession, user, plan.type])
 
   const scansRemaining = useCallback(() => {
     if (!user) return 0
-    if (plan.type !== 'free') return 999
     if (USE_API && apiSession?.scansRemaining !== undefined) {
       return apiSession.scansRemaining
     }
     const monthKey = getMonthKey()
     const used = user.scansMonthKey === monthKey ? user.scansUsed : 0
-    return Math.max(0, PLAN_LIMITS.free.scansPerMonth - used)
+    return Math.max(0, PLAN_LIMITS[plan.type].scansPerMonth - used)
   }, [apiSession, user, plan.type])
 
   const isPremium = useCallback(() => plan.type === 'premium' || plan.type === 'vip', [plan.type])
@@ -530,7 +504,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshSession,
     deleteAccount,
-    upgradePlan,
     addScan,
     addCVFile,
     updateUser,

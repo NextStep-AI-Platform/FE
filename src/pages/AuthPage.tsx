@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Check, ArrowLeft } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { useToast } from "../contexts/ToastContext";
@@ -18,6 +18,10 @@ function getAuthErrorMessage(error: unknown): string {
 
 export default function AuthPage() {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const requestedPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+	const afterLogin = requestedPath?.pathname === '/payment'
+		? `/payment${requestedPath.search ?? ''}` : '/dashboard';
 	const { login, register, loginWithGoogleDemo, isAuthenticated } = useApp();
 	const toast = useToast();
 	const [tab, setTab] = useState<Tab>("login");
@@ -68,7 +72,7 @@ export default function AuthPage() {
 			const ok = await login(loginForm.email, loginForm.password);
 			if (ok) {
 				toast.success("Đăng nhập thành công");
-				navigate("/dashboard");
+				navigate(afterLogin);
 			} else {
 				toast.error("Đăng nhập thất bại", "Email hoặc mật khẩu không đúng");
 			}
@@ -97,7 +101,7 @@ export default function AuthPage() {
 			if (ok) {
 				if (USE_API) {
 					toast.success("Dang ky thanh cong", "Tai khoan da duoc tao va dang nhap");
-					navigate("/dashboard");
+					navigate(afterLogin);
 					return;
 				}
 				toast.success("Đăng ký thành công", "Vui lòng đăng nhập để tiếp tục");
@@ -126,7 +130,7 @@ export default function AuthPage() {
 					"Đăng nhập thành công",
 					"Demo Google — không cần mật khẩu",
 				);
-				navigate("/dashboard");
+				navigate(afterLogin);
 			} else {
 				toast.error("Đăng nhập thất bại", "Không thể tạo phiên demo");
 			}
@@ -134,8 +138,8 @@ export default function AuthPage() {
 	};
 
 	useEffect(() => {
-		if (isAuthenticated) navigate("/dashboard", { replace: true });
-	}, [isAuthenticated, navigate]);
+		if (isAuthenticated) navigate(afterLogin, { replace: true });
+	}, [isAuthenticated, navigate, afterLogin]);
 
 	const inputClass = (field: string) =>
 		`w-full bg-ns-page border rounded-lg px-4 py-3 text-ns-primary placeholder:text-ns-faint focus:outline-none transition-colors ${
@@ -176,9 +180,9 @@ export default function AuthPage() {
 					</p>
 					<div className="space-y-4 text-left mb-10">
 						{[
-							"Phân tích CV bằng AI trong 60 giây",
-							"Gợi ý công ty và vị trí phù hợp",
-							"Luyện phỏng vấn 1-1 với AI",
+							"Phân tích CV so với mô tả công việc",
+							"3 lượt scan miễn phí mỗi tháng",
+							"Xem quyền lợi và trạng thái thanh toán trên trang gói dịch vụ",
 						].map((f) => (
 							<div key={f} className="flex items-center gap-3">
 								<div className="w-6 h-6 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
@@ -189,12 +193,8 @@ export default function AuthPage() {
 						))}
 					</div>
 					<div className="bg-ns-card/60 border border-ns rounded-2xl p-5">
-						<p className="text-ns-muted text-sm italic">
-							"Hơn{" "}
-							<span className="text-blue-400 font-semibold">
-								10.000 người dùng
-							</span>{" "}
-							đã tìm thấy con đường sự nghiệp của họ với NextStep AI"
+						<p className="text-ns-muted text-sm">
+							Bạn có thể bắt đầu với gói Free; không cần thanh toán.
 						</p>
 					</div>
 				</div>
