@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { USE_API } from '../lib/config'
 import { createBillingCheckout, getBillingCatalog, getBillingMe } from '../lib/api/billing'
 import type { BillingCatalog, BillingEntitlement, BillingPlan } from '../lib/api/billing'
@@ -22,6 +22,7 @@ function description(plan: BillingPlan): string {
 }
 
 export default function PricingPage() {
+  const navigate = useNavigate()
   const { user } = useApp()
   const [catalog, setCatalog] = useState<BillingCatalog>(preview)
   const [entitlement, setEntitlement] = useState<BillingEntitlement | null>(null)
@@ -61,12 +62,12 @@ export default function PricingPage() {
     keys.current[plan.sku] = key
     try {
       const order = await createBillingCheckout(plan.sku, catalog.catalogVersion, key)
-      window.location.assign(`/payment?orderId=${encodeURIComponent(order.orderId)}`)
+      navigate(`/payment?orderId=${encodeURIComponent(order.orderId)}`)
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'OPEN_ORDER_EXISTS' &&
           typeof caught.details === 'object' && caught.details !== null &&
           'orderId' in caught.details && typeof caught.details.orderId === 'string') {
-        window.location.assign(`/payment?orderId=${encodeURIComponent(caught.details.orderId)}`)
+        navigate(`/payment?orderId=${encodeURIComponent(caught.details.orderId)}`)
         return
       }
       setError('Không thể tạo giao dịch. Vui lòng thử lại hoặc liên hệ hỗ trợ.')
