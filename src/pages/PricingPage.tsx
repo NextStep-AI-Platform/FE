@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { USE_API } from '../lib/config'
 import { createBillingCheckout, getBillingCatalog, getBillingMe } from '../lib/api/billing'
 import type { BillingCatalog, BillingEntitlement, BillingPlan } from '../lib/api/billing'
@@ -30,6 +31,8 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null)
   const [busySku, setBusySku] = useState<string | null>(null)
   const keys = useRef<Record<string, string>>({})
+  const hasPaidTier = entitlementReady && !!entitlement && entitlement.planType !== 'free'
+  const showFreeCard = !user || (entitlementReady && entitlement?.planType === 'free')
 
   useEffect(() => {
     if (!USE_API) return
@@ -76,32 +79,49 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto p-6 space-y-8 animate-page-in">
+    <main className="relative max-w-5xl mx-auto px-6 pb-6 pt-16 space-y-8 animate-page-in">
+      <Link to={user ? '/dashboard' : '/'} aria-label="Đóng trang gói dịch vụ" className="absolute right-6 top-6 rounded-lg border border-ns p-2 text-ns-secondary hover:text-ns-primary hover:bg-ns-raised focus-visible:outline-2 focus-visible:outline-blue-500">
+        <X size={20} aria-hidden="true" />
+      </Link>
       <div className="text-center space-y-3">
         <h1 className="font-heading text-3xl font-bold text-ns-primary">Các gói NextStep</h1>
         {!catalog.checkoutEnabled && <p className="text-ns-secondary">Thanh toán hiện chưa khả dụng. Các gói dưới đây chỉ để tham khảo.</p>}
-        {user && entitlementReady && entitlement && <p className="text-ns-secondary">Gói hiện tại: {entitlement.planType === 'free' ? 'Free' : entitlement.planType === 'vip' ? 'VIP' : 'Premium'}{entitlement.expiresAt ? ` · Hết hạn ${new Date(entitlement.expiresAt).toLocaleDateString('vi-VN')}` : ''}{entitlement.status === 'suspended' ? ' · Cần hỗ trợ' : ''}</p>}
+        {user && !entitlementReady && !error && <p className="text-ns-secondary">Đang xác minh gói hiện tại…</p>}
+        {user && entitlementReady && entitlement?.planType === 'free' && <p className="text-ns-secondary">Gói hiện tại: Free</p>}
         {error && <p role="alert" className="text-red-400">{error}</p>}
       </div>
+      {hasPaidTier && entitlement && (
+        <section className="rounded-2xl border-2 border-blue-500 bg-ns-card p-6 shadow-card" aria-label="Trạng thái gói trả phí">
+          <p className="text-blue-400 text-sm font-semibold">{entitlement.status === 'active' ? 'Gói đang sử dụng' : 'Gói đã đăng ký'}</p>
+          <h2 className="font-heading text-2xl font-bold text-ns-primary mt-1">{entitlement.planType === 'vip' ? 'VIP' : 'Premium'}</h2>
+          <p className="text-ns-secondary mt-2">
+            {entitlement.status === 'suspended' ? 'Quyền sử dụng tạm khóa · Cần hỗ trợ' : entitlement.status === 'expired' ? 'Gói đã hết hạn' : `${entitlement.scanLimitPerMonth} lượt phân tích CV/tháng`}
+            {entitlement.expiresAt ? ` · Hết hạn ${new Date(entitlement.expiresAt).toLocaleDateString('vi-VN')}` : ''}
+          </p>
+          {entitlement.status === 'active' && <p className="text-ns-muted text-sm mt-2">Bạn có thể mua tiếp cùng hạng; thời hạn sẽ được nối thêm sau khi thanh toán.</p>}
+          <Link to="/dashboard" className="inline-block mt-4 rounded-xl border border-blue-500/40 px-4 py-2 text-blue-400 hover:bg-blue-500/10">Về tổng quan</Link>
+        </section>
+      )}
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        <section className="rounded-2xl border border-ns bg-ns-card p-6 space-y-4">
+        {showFreeCard && <section className="rounded-2xl border border-ns bg-ns-card p-6 space-y-4">
           <h2 className="text-xl font-bold text-ns-primary">Free</h2>
           <p className="text-2xl font-bold text-ns-primary">Miễn phí</p>
           <p className="text-ns-secondary">3 lượt phân tích CV mỗi tháng.</p>
           <Link to="/dashboard" className="inline-block rounded-xl border border-ns px-4 py-2 text-ns-primary">Tiếp tục dùng miễn phí</Link>
-        </section>
+        </section>}
         {catalog.plans.map(plan => {
           const eligibleTier = entitlement?.planType === 'free' || entitlement?.planType === plan.planType
           const canBuy = USE_API && !!user && entitlementReady && !!entitlement && entitlement.status !== 'suspended' && eligibleTier && catalog.checkoutEnabled && plan.status === 'active'
-          return <section key={plan.sku} className="rounded-2xl border border-ns bg-ns-card p-6 space-y-4">
+          const currentTier = hasPaidTier && entitlement?.planType === plan.planType
+          return <section key={plan.sku} className={`rounded-2xl border bg-ns-card p-6 space-y-4 ${currentTier ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-ns'}`}>
             <h2 className="text-xl font-bold text-ns-primary">{plan.planType === 'vip' ? 'VIP' : 'Premium'} · {plan.durationDays} ngày</h2>
             <p className="text-2xl font-bold text-ns-primary">{plan.priceVnd.toLocaleString('vi-VN')}đ</p>
-            {entitlementReady && entitlement?.planType === plan.planType && <p className="text-xs font-semibold text-blue-400">Gói hiện tại · Có thể mua tiếp cùng hạng</p>}
+            {currentTier && <p className="text-xs font-semibold text-blue-400">Cùng hạng đang sử dụng · Có thể mua nối hạn</p>}
             {!canBuy && <p className="text-xs font-semibold text-ns-muted">{!catalog.checkoutEnabled || plan.status !== 'active' ? 'Chưa nhận thanh toán' : !user ? 'Đăng nhập để thanh toán' : !entitlementReady ? 'Đang xác minh gói hiện tại' : !eligibleTier ? 'Không hỗ trợ đổi hạng giữa kỳ' : 'Liên hệ hỗ trợ để tiếp tục'}</p>}
             <p className="text-ns-secondary">{description(plan)}</p>
             <p className="text-ns-muted text-xs">Mua trước một lần, không tự gia hạn.</p>
             {canBuy && <button type="button" disabled={busySku !== null} onClick={() => void checkout(plan)} className="rounded-xl bg-blue-600 px-4 py-2 text-white disabled:opacity-50">
-              {busySku === plan.sku ? 'Đang tạo đơn…' : 'Tạo mã chuyển khoản'}
+              {busySku === plan.sku ? 'Đang tạo đơn…' : currentTier ? `Mua thêm ${plan.durationDays} ngày` : 'Tạo mã chuyển khoản'}
             </button>}
           </section>
         })}
