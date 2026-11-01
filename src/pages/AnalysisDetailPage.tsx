@@ -40,6 +40,16 @@ function safeCourseUrl(value: string | null | undefined): string | null {
   }
 }
 
+function courseCatalogUrl(platform: string): string | null {
+  const name = platform.toLowerCase()
+  if (name.includes('microsoft')) return 'https://learn.microsoft.com/en-us/training/career-paths/data-engineer'
+  if (name.includes('coursera')) return 'https://www.coursera.org/browse'
+  if (name.includes('udemy')) return 'https://www.udemy.com/'
+  if (name.includes('pluralsight')) return 'https://www.pluralsight.com/browse'
+  if (name.includes('edx')) return 'https://www.edx.org/learn'
+  return null
+}
+
 function MetricTooltip({ label, tooltipKey }: { label: string; tooltipKey: string }) {
   return (
     <span className="inline-flex items-center gap-1 group relative">
@@ -659,6 +669,7 @@ export default function AnalysisDetailPage() {
             </div>
           ) : result.courses.map(c => {
             const courseUrl = safeCourseUrl(c.url)
+            const catalogUrl = courseCatalogUrl(c.platform)
             return (
             <div key={c.title} className="bg-ns-card border border-ns rounded-xl p-5 flex items-start gap-4 shadow-card">
               <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -674,7 +685,8 @@ export default function AnalysisDetailPage() {
                     </span>
                   </span>
                 </div>
-                <p className="text-ns-faint text-xs mt-1">{c.platform} · {c.skill} · ⭐ {c.rating}</p>
+                <p className="text-ns-faint text-xs mt-1">{c.platform} · {c.skill}</p>
+                {!courseUrl && <p className="text-ns-faint text-xs mt-1">Khóa học cụ thể chưa được xác minh.</p>}
               </div>
               {courseUrl ? (
                 <a
@@ -684,6 +696,15 @@ export default function AnalysisDetailPage() {
                   className="flex items-center gap-1 border border-blue-500/30 text-blue-400 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-500/10 cursor-pointer flex-shrink-0"
                 >
                   Xem khoá học <ExternalLink size={12} />
+                </a>
+              ) : catalogUrl ? (
+                <a
+                  href={catalogUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 border border-blue-500/30 text-blue-400 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex-shrink-0"
+                >
+                  Duyệt danh mục <ExternalLink size={12} />
                 </a>
               ) : (
                 <span className="text-ns-faint text-xs flex-shrink-0" title="Chưa có đường dẫn khóa học được xác minh">
