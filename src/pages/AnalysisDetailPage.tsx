@@ -677,7 +677,9 @@ export default function AnalysisDetailPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-ns-primary font-medium">{c.title}</p>
+                  <p className="text-ns-primary font-medium">
+                    {courseUrl ? c.title : `Tìm khóa học về ${c.skill}`}
+                  </p>
                   <span className="group relative">
                     <Info size={14} className="text-ns-faint hover:text-blue-400 cursor-help" />
                     <span className="absolute left-0 top-full mt-2 z-50 hidden group-hover:block w-64 bg-ns-raised border border-ns rounded-lg px-3 py-2 text-xs text-ns-secondary shadow-lg">
