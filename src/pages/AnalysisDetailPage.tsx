@@ -16,6 +16,8 @@ import { USE_API } from '../lib/config'
 import { getAnalysis, listAnalyses } from '../lib/api/analysis'
 import type { AnalysisListItem } from '../lib/api/analysis'
 import { ApiError } from '../lib/api/client'
+import { getCompanySuggestions } from '../lib/api/recommendations'
+import type { CompanySuggestionsResponse } from '../lib/api/recommendations'
 import type { DocumentInput, ScanRecord } from '../types'
 
 type Tab = 'overview' | 'ats' | 'compatibility' | 'improve' | 'jobs' | 'courses'
@@ -82,6 +84,7 @@ export default function AnalysisDetailPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const { scans, isPremium } = useApp()
+  const premium = isPremium()
   const localScan = USE_API ? undefined : scans.find(scan => scan.id === id)
   const [remoteScan, setRemoteScan] = useState<ScanRecord | null>(null)
   const [remoteHistory, setRemoteHistory] = useState<AnalysisListItem[]>([])
@@ -91,6 +94,22 @@ export default function AnalysisDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [preview, setPreview] = useState<{ title: string; doc: DocumentInput } | null>(null)
   const [docxConfirm, setDocxConfirm] = useState<DocumentInput | null>(null)
+  const [companySuggestions, setCompanySuggestions] = useState<CompanySuggestionsResponse | null>(null)
+  const [companyError, setCompanyError] = useState<string | null>(null)
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [companyReload, setCompanyReload] = useState(0)
+
+  useEffect(() => {
+    if (!USE_API || !premium || activeTab !== 'jobs' || !id) return
+    let cancelled = false
+    setCompanyLoading(true)
+    setCompanyError(null)
+    getCompanySuggestions(id)
+      .then(data => { if (!cancelled) setCompanySuggestions(data) })
+      .catch(() => { if (!cancelled) { setCompanySuggestions(null); setCompanyError('Không tải được gợi ý doanh nghiệp. Vui lòng thử lại.') } })
+      .finally(() => { if (!cancelled) setCompanyLoading(false) })
+    return () => { cancelled = true }
+  }, [id, premium, activeTab, companyReload])
 
   useEffect(() => {
     setActiveTab('overview')
@@ -143,8 +162,6 @@ export default function AnalysisDetailPage() {
   }, [id, reloadKey])
 
   const scan = USE_API ? remoteScan : localScan
-
-  const premium = isPremium()
 
   if (loading) {
     return (
@@ -540,37 +557,31 @@ export default function AnalysisDetailPage() {
 
       {activeTab === 'jobs' && premium && (
         <div className="space-y-6">
-          {result.companies && result.companies.length > 0 && (
-            <section>
-              <h3 className="font-semibold text-ns-primary mb-3">Doanh nghiệp AI đề xuất</h3>
+          <section>
+            <h3 className="font-semibold text-ns-primary mb-3">Gợi ý doanh nghiệp từ tin tuyển dụng</h3>
+            {!USE_API ? <p className="text-ns-muted text-sm">Chưa có catalog tin tuyển dụng đã xác minh trong chế độ demo.</p> :
+              companyLoading ? <p role="status" className="text-ns-muted text-sm">Đang kiểm tra tin tuyển dụng…</p> :
+              companyError ? <p role="alert" className="text-red-400 text-sm">{companyError} <button className="underline" onClick={() => setCompanyReload(value => value + 1)}>Thử lại</button></p> :
+              companySuggestions?.status === 'disabled' ? <p className="text-ns-muted text-sm">Gợi ý từ tin tuyển dụng đã xác minh chưa được mở cho tài khoản này.</p> :
+              !companySuggestions?.items.length ? <p className="text-ns-muted text-sm">Hiện chưa có tin còn mở và đã xác minh phù hợp. Vui lòng quay lại sau.</p> :
               <div className="grid md:grid-cols-2 gap-3">
-                {result.companies.map(company => (
-                  <div key={company.name} className="bg-ns-card border border-ns rounded-xl p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-ns-primary font-medium truncate">{company.name}</p>
-                        <p className="text-ns-faint text-xs mt-1">
-                          {[company.industry, company.size].filter(Boolean).join(' · ')}
-                        </p>
-                      </div>
-                      <span className={`font-bold ${getMatchColor(company.match)}`}>
-                        {company.match}%
-                      </span>
-                    </div>
-                    {company.requirements.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        {company.requirements.slice(0, 4).map(requirement => (
-                          <span key={requirement} className="text-xs bg-ns-page border border-ns px-2 py-1 rounded-lg text-ns-muted">
-                            {requirement}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                {companySuggestions.items.map(item => (
+                  <article key={`${item.source}:${item.sourceJobId}`} className="bg-ns-card border border-ns rounded-xl p-5 space-y-2">
+                    <h4 className="text-ns-primary font-semibold">
+                      <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 underline underline-offset-2">
+                        {item.title} <ExternalLink size={13} className="inline" aria-hidden="true" />
+                      </a>
+                    </h4>
+                    <p className="text-ns-secondary text-sm">{item.company}{item.location ? ` · ${item.location}` : ''}</p>
+                    <p className="text-ns-faint text-xs">Nguồn: {item.source} · {item.attribution}</p>
+                    <p className="text-ns-faint text-xs">Đăng: {item.postedAt ? new Date(item.postedAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa rõ'} · Hết hạn: {new Date(item.expiresAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · Xác minh: {new Date(item.verifiedAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+                    {item.skills.length > 0 && <ul className="flex flex-wrap gap-1" aria-label="Kỹ năng yêu cầu">{item.skills.map(skill => <li key={skill} className="rounded-full border border-ns px-2 py-0.5 text-xs text-ns-muted">{skill}</li>)}</ul>}
+                    {item.description && <details className="text-ns-muted text-sm"><summary className="cursor-pointer">Mô tả công việc</summary><p className="mt-2 whitespace-pre-line break-words">{item.description}</p></details>}
+                    <ul className="list-disc pl-5 text-ns-muted text-xs space-y-1">{item.why.map(reason => <li key={reason}>{reason}</li>)}</ul>
+                  </article>
                 ))}
-              </div>
-            </section>
-          )}
+              </div>}
+          </section>
 
           <section>
             <h3 className="font-semibold text-ns-primary mb-3">Kết quả phù hợp khác</h3>

@@ -53,6 +53,7 @@ export interface AnalysisListItem {
   role: string
   company: string
   overallScore: number
+  reportedOverallScore: number | null
   analyzedAt: string
   cvInput: DocumentInput
   jdInput: DocumentInput
@@ -97,6 +98,7 @@ function normalizeListItem(
     role: item.role,
     company: item.company,
     overallScore: item.overallScore ?? result?.scores.overall ?? 0,
+    reportedOverallScore: item.overallScore ?? result?.scores.overall ?? null,
     analyzedAt: item.analyzedAt ?? result?.analyzedAt ?? '',
     cvInput: normalizeDocumentInput(item.cvInput),
     jdInput: normalizeDocumentInput(item.jdInput),

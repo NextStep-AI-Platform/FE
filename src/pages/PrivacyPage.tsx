@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom'
 import { Shield, Database, Lock, UserCheck, Mail, FileText, Eye } from 'lucide-react'
 import PublicNavbar from '../components/PublicNavbar'
 import ScrollReveal from '../components/ScrollReveal'
+import { USE_API } from '../lib/config'
 
-const sections = [
+const mockSections = [
   {
     icon: FileText,
     title: '1. Thông tin chúng tôi thu thập',
@@ -57,14 +58,43 @@ const sections = [
     icon: Mail,
     title: '6. Liên hệ',
     items: [
-      'Email: privacy@nextstep.ai',
-      'Chúng tôi phản hồi yêu cầu liên quan quyền riêng tư trong vòng 7 ngày làm việc.',
-      'Cập nhật lần cuối: tháng 6/2026.',
+      'Hiện chưa có email hoặc biểu mẫu hỗ trợ chính thức được xác nhận để công bố tại đây.',
+      'Vui lòng liên hệ nhóm vận hành qua kênh trao đổi đã được cung cấp cho tài khoản của bạn.',
+    ],
+  },
+]
+
+const apiSections = [
+  {
+    icon: FileText,
+    title: '1. Dữ liệu tài khoản và sử dụng dịch vụ',
+    items: [
+      'Tài khoản, hồ sơ, nội dung CV/JD và kết quả phân tích được xử lý qua máy chủ khi bạn dùng các tính năng tương ứng.',
+      'Thông tin gói và giao dịch thanh toán được máy chủ quản lý; xóa dữ liệu trên trình duyệt không xóa hồ sơ máy chủ.',
+    ],
+  },
+  {
+    icon: UserCheck,
+    title: '2. Chỉnh sửa và yêu cầu xử lý tài khoản',
+    items: [
+      'Bạn có thể chỉnh sửa các trường hồ sơ được hỗ trợ trong trang Hồ Sơ; thay đổi chỉ được ghi nhận sau khi máy chủ xác nhận.',
+      'Bạn có thể bấm Xóa tài khoản trong Hồ Sơ. Sau khi máy chủ xác nhận, tài khoản không thể đăng nhập lại.',
+      'Tài khoản được đánh dấu đã xóa; dữ liệu hồ sơ, phân tích và giao dịch thanh toán cũ không bị xóa vật lý ở bước này. Thời hạn lưu cụ thể chưa được công bố trên trang này.',
+      'Nếu cần hỗ trợ thêm về dữ liệu, vui lòng liên hệ nhóm vận hành qua kênh trao đổi đã được cung cấp cho tài khoản của bạn.',
+    ],
+  },
+  {
+    icon: Mail,
+    title: '3. Kênh liên hệ',
+    items: [
+      'Hiện chưa có email hoặc biểu mẫu hỗ trợ chính thức được xác nhận để công bố tại đây.',
+      'Kênh hỗ trợ chính thức và thời hạn lưu hồ sơ giao dịch cần được nhóm vận hành công bố riêng.',
     ],
   },
 ]
 
 export default function PrivacyPage() {
+  const sections = USE_API ? apiSections : mockSections
   return (
     <div className="min-h-screen bg-ns-page">
       <PublicNavbar />
@@ -76,17 +106,17 @@ export default function PrivacyPage() {
             <Shield size={28} className="text-blue-400 keep-accent" />
           </div>
           <div>
-            <h1 className="font-heading text-3xl font-bold text-ns-primary">Chính sách bảo mật</h1>
-            <p className="text-ns-muted text-sm mt-1">NextStep AI — Phiên bản MVP</p>
+            <h1 className="font-heading text-3xl font-bold text-ns-primary">{USE_API ? 'Thông tin dữ liệu và hỗ trợ' : 'Chính sách bảo mật'}</h1>
+            <p className="text-ns-muted text-sm mt-1">NextStep AI</p>
           </div>
         </div>
         </ScrollReveal>
 
         <ScrollReveal delay={80}>
         <p className="text-ns-secondary leading-relaxed mb-10 bg-ns-card border border-ns rounded-2xl p-6 card-interactive">
-          Chúng tôi coi trọng quyền riêng tư của bạn. Tài liệu này mô tả cách NextStep AI thu thập, sử dụng và bảo vệ
-          thông tin trong phiên bản MVP (mock frontend, dữ liệu lưu local). Khi triển khai backend thật, chính sách
-          sẽ được cập nhật tương ứng.
+          {USE_API
+            ? 'Thông tin dưới đây mô tả các thao tác hiện có đối với tài khoản dùng máy chủ. Nút xóa tài khoản sẽ vô hiệu hóa đăng nhập sau khi máy chủ xác nhận, đồng thời giữ giao dịch thanh toán cũ để đối soát.'
+            : 'Tài liệu này mô tả cách NextStep AI xử lý dữ liệu trong phiên bản MVP dùng dữ liệu cục bộ trên trình duyệt.'}
         </p>
         </ScrollReveal>
 
