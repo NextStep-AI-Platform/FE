@@ -4,6 +4,7 @@ import { getItem, setItem, STORAGE_KEYS } from '../lib/storage'
 import { getMonthKey } from '../lib/utils'
 import { USE_API } from '../lib/config'
 import { fetchMe, loginApi, logoutApi, registerApi } from '../lib/api/auth'
+import { deleteServerAccount } from '../lib/api/users'
 import type { AuthResponse } from '../lib/api/auth'
 import { clearTokens, getAccessToken } from '../lib/api/client'
 import type {
@@ -138,7 +139,7 @@ interface AppContextValue extends AppState {
   register: (name: string, email: string, password: string) => Promise<boolean>
   logout: () => void
   refreshSession: () => Promise<void>
-  deleteAccount: () => void
+  deleteAccount: () => Promise<void>
   addScan: (scan: ScanRecord) => void
   addCVFile: (file: CVFileRecord) => void
   updateUser: (patch: Partial<User>) => void
@@ -372,8 +373,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPersisted(prev => ({ ...prev, currentUserId: null }))
   }, [])
 
-  const deleteAccount = useCallback(() => {
+  const deleteAccount = useCallback(async () => {
     if (!user) return
+    if (USE_API) {
+      await deleteServerAccount()
+      clearTokens()
+      setApiSession(null)
+      setPersisted(prev => ({ ...prev, currentUserId: null }))
+      return
+    }
     setPersisted(prev => ({
       ...emptyPersisted(),
       accounts: prev.accounts.filter(a => a.user.id !== user.id),

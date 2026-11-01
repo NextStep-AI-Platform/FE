@@ -201,15 +201,15 @@ export default function AuthPage() {
 			</div>
 
 			{/* RIGHT — Form Panel */}
-			<div className="flex-1 lg:w-1/2 flex items-center justify-center p-6 relative">
-				<Link
-					to="/"
-					className="absolute top-6 left-6 flex items-center gap-2 text-ns-muted hover:text-ns-primary text-sm transition-colors"
-				>
-					<ArrowLeft size={16} /> Trang chủ
-				</Link>
-
+			<div className="flex-1 lg:w-1/2 flex items-center justify-center p-6">
 				<div className="w-full max-w-md">
+					<Link
+						to="/"
+						className="mb-6 inline-flex items-center gap-2 text-ns-muted hover:text-ns-primary text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500"
+					>
+						<ArrowLeft size={16} aria-hidden="true" /> Trang chủ
+					</Link>
+
 					{/* Tab switcher */}
 					<div className="flex bg-ns-card border border-ns rounded-xl p-1 mb-8">
 						<button
