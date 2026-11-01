@@ -7,6 +7,7 @@ import { aggregateCourses, getQualifyingScans } from '../lib/dashboardInsights'
 import { getAnalysis, listAnalyses } from '../lib/api/analysis'
 import type { AnalysisListItem } from '../lib/api/analysis'
 import { USE_API } from '../lib/config'
+import { courseDisplayTitle, verifiedCourseUrl } from '../lib/courseLinks'
 import { PICTURE } from '../lib/picture'
 import { formatDateTime, formatScanDisplayTitle, getScoreBarColor, getScoreLabel } from '../lib/utils'
 import type { ScanRecord } from '../types'
@@ -174,7 +175,7 @@ export default function DashboardPage() {
           { label: 'Điểm CV gần nhất', value: analysisLoading ? '...' : latestAnalysis ? `${latestAnalysis.overallScore}/100` : '—', icon: Star, color: 'keep-accent text-yellow-400', bg: 'bg-yellow-400/10', tile: 'stat-icon-tile-yellow' },
           { label: 'Lượt scan còn lại', value: `${scansLeft} lượt`, icon: ScanLine, color: scansLeft <= 1 ? 'keep-accent text-yellow-400' : 'keep-accent text-blue-400', bg: scansLeft <= 1 ? 'bg-yellow-400/10' : 'bg-blue-400/10', tile: scansLeft <= 1 ? 'stat-icon-tile-yellow' : 'stat-icon-tile-blue' },
           { label: 'Công ty phù hợp', value: premium ? (detailsLoading ? '...' : `${qualifyingScans.length} lượt`) : '—', icon: Building2, color: 'keep-accent text-green-400', bg: 'bg-green-400/10', tile: 'stat-icon-tile-green' },
-          { label: 'Khoá học đề xuất', value: premium ? (detailsLoading ? '...' : `${aggregatedCourses.length} khoá`) : '—', icon: BookOpen, color: 'keep-accent text-purple-400', bg: 'bg-purple-400/10', tile: 'stat-icon-tile-purple' },
+          { label: 'Chủ đề học đề xuất', value: premium ? (detailsLoading ? '...' : `${aggregatedCourses.length} chủ đề`) : '—', icon: BookOpen, color: 'keep-accent text-purple-400', bg: 'bg-purple-400/10', tile: 'stat-icon-tile-purple' },
         ].map(({ label, value, icon: Icon, color, bg, tile }) => (
           <div key={label} className="bg-ns-card border border-ns rounded-2xl p-5 card-interactive dashboard-stat-card">
             <div className={`w-10 h-10 ${bg} ${tile} stat-icon-tile rounded-xl flex items-center justify-center mb-3`}>
@@ -220,18 +221,18 @@ export default function DashboardPage() {
         </div>
 
         <div
-          className="bg-ns-card border border-ns rounded-2xl p-7 relative overflow-hidden card-interactive"
+          className="bg-slate-950 border border-slate-700 rounded-2xl p-7 relative overflow-hidden card-interactive"
           style={{ backgroundImage: `url(${PICTURE.dashboardInterviewBanner})`, backgroundSize: 'cover', backgroundPosition: 'right center' }}
         >
-          <div className="absolute inset-0 bg-ns-card/90" />
+          <div className="absolute inset-0 bg-slate-950/85" />
           <div className="relative z-10">
           <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center mb-5">
-            <Mic size={24} className="text-blue-400" />
+            <Mic size={24} className="text-blue-200" />
           </div>
-          <h3 className="font-heading font-bold text-ns-primary text-xl mb-2">Luyện phỏng vấn AI</h3>
-          <p className="text-ns-muted text-sm mb-5 leading-relaxed">Mô phỏng buổi phỏng vấn thực tế với AI cho vị trí bạn muốn</p>
+          <h3 className="font-heading font-bold text-white text-xl mb-2">Luyện phỏng vấn AI</h3>
+          <p className="text-slate-200 text-sm mb-5 leading-relaxed">Mô phỏng buổi phỏng vấn thực tế với AI cho vị trí bạn muốn</p>
           {!vip ? (
-            <button onClick={() => navigate('/pricing')} className="border border-blue-500/40 text-blue-400 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-500/10 transition cursor-pointer flex items-center gap-2">
+            <button onClick={() => navigate('/pricing')} className="border border-blue-300/60 text-blue-100 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-500/20 transition cursor-pointer flex items-center gap-2">
               <Lock size={14} /> Xem gói VIP
             </button>
           ) : (
@@ -385,7 +386,7 @@ export default function DashboardPage() {
         </div>
         <div className="bg-ns-card border border-ns rounded-2xl p-6 relative overflow-hidden shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold text-ns-primary">Khoá học nên học tiếp theo</h3>
+            <h3 className="font-heading font-semibold text-ns-primary">Chủ đề nên học tiếp theo</h3>
             {!premium && <span className="text-xs premium-lock-badge px-2 py-1 rounded-full flex items-center gap-1 keep-accent text-yellow-400"><Lock size={10} /> Premium</span>}
           </div>
           {premium ? (
@@ -394,27 +395,35 @@ export default function DashboardPage() {
                 {[0, 1, 2].map(item => <div key={item} className="h-14 bg-ns-page rounded-xl animate-pulse" />)}
               </div>
             ) : aggregatedCourses.length === 0 ? (
-              <p className="text-ns-muted text-sm py-6 text-center">Chưa có khoá học đề xuất trong 30 ngày qua</p>
+              <p className="text-ns-muted text-sm py-6 text-center">Chưa có chủ đề học đề xuất trong 30 ngày qua</p>
             ) : (
               <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-                {aggregatedCourses.map(c => (
-                  <button key={c.url || c.title} type="button" onClick={() => window.open(c.url, '_blank', 'noopener,noreferrer')}
-                    className="w-full p-3 bg-ns-page rounded-xl flex items-start gap-3 hover:border-orange-500/30 border border-transparent transition cursor-pointer text-left insight-list-item">
+                {aggregatedCourses.map(c => {
+                  const url = verifiedCourseUrl(c)
+                  const content = <>
                     <div className="w-8 h-8 bg-orange-500/20 stat-icon-tile stat-icon-tile-orange rounded-lg flex items-center justify-center flex-shrink-0">
                       <BookOpen size={14} className="keep-accent text-orange-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-ns-primary text-sm font-medium line-clamp-2">{c.title}</p>
+                      <p className="text-ns-primary text-sm font-medium line-clamp-2">{courseDisplayTitle(c)}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-xs keep-accent text-orange-400">{c.platform}</span>
-                        <span className="text-xs keep-accent text-yellow-400">⭐ {c.rating}</span>
+                        {url && <span className="text-xs keep-accent text-orange-400">{c.platform}</span>}
                         <span className="text-xs keep-accent text-blue-400">{c.skill}</span>
                         {c.count > 1 && <span className="text-xs keep-accent text-purple-400">{c.count}× đề xuất</span>}
                       </div>
+                      {!url && <p className="text-ns-faint text-xs mt-1">Chưa có liên kết khóa học được xác minh</p>}
                     </div>
-                    <ExternalLink size={14} className="text-ns-faint flex-shrink-0 mt-1" />
-                  </button>
-                ))}
+                    {url && <ExternalLink size={14} className="text-ns-faint flex-shrink-0 mt-1" />}
+                  </>
+                  const cardClass = 'w-full p-3 bg-ns-page rounded-xl flex items-start gap-3 border border-transparent text-left insight-list-item'
+                  return url ? (
+                    <a key={c.title} href={url} target="_blank" rel="noopener noreferrer" className={`${cardClass} hover:border-orange-500/30 transition`}>
+                      {content}
+                    </a>
+                  ) : (
+                    <div key={c.title} className={cardClass}>{content}</div>
+                  )
+                })}
               </div>
             )
           ) : (

@@ -13,6 +13,7 @@ import {
 } from '../lib/utils'
 import { FormattedText } from '../components/FormattedText'
 import { USE_API } from '../lib/config'
+import { courseDisplayTitle, verifiedCourseUrl } from '../lib/courseLinks'
 import { getAnalysis, listAnalyses } from '../lib/api/analysis'
 import type { AnalysisListItem } from '../lib/api/analysis'
 import { ApiError } from '../lib/api/client'
@@ -26,28 +27,6 @@ function availableScore(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
     ? value
     : null
-}
-
-function safeCourseUrl(value: string | null | undefined): string | null {
-  if (!value) return null
-  try {
-    const url = new URL(value)
-    const allowedHosts = ['udemy.com', 'coursera.org', 'pluralsight.com', 'edx.org', 'microsoft.com']
-    const trustedHost = allowedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))
-    return url.protocol === 'https:' && !url.username && !url.password && trustedHost ? url.href : null
-  } catch {
-    return null
-  }
-}
-
-function courseCatalogUrl(platform: string): string | null {
-  const name = platform.toLowerCase()
-  if (name.includes('microsoft')) return 'https://learn.microsoft.com/en-us/training/career-paths/data-engineer'
-  if (name.includes('coursera')) return 'https://www.coursera.org/browse'
-  if (name.includes('udemy')) return 'https://www.udemy.com/'
-  if (name.includes('pluralsight')) return 'https://www.pluralsight.com/browse'
-  if (name.includes('edx')) return 'https://www.edx.org/learn'
-  return null
 }
 
 function MetricTooltip({ label, tooltipKey }: { label: string; tooltipKey: string }) {
@@ -668,8 +647,7 @@ export default function AnalysisDetailPage() {
               <p className="text-ns-muted text-sm">Chưa có khóa học phù hợp được đề xuất.</p>
             </div>
           ) : result.courses.map(c => {
-            const courseUrl = safeCourseUrl(c.url)
-            const catalogUrl = courseCatalogUrl(c.platform)
+            const courseUrl = verifiedCourseUrl(c)
             return (
             <div key={c.title} className="bg-ns-card border border-ns rounded-xl p-5 flex items-start gap-4 shadow-card">
               <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -678,7 +656,7 @@ export default function AnalysisDetailPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-ns-primary font-medium">
-                    {courseUrl ? c.title : `Tìm khóa học về ${c.skill}`}
+                    {courseDisplayTitle(c)}
                   </p>
                   <span className="group relative">
                     <Info size={14} className="text-ns-faint hover:text-blue-400 cursor-help" />
@@ -687,7 +665,7 @@ export default function AnalysisDetailPage() {
                     </span>
                   </span>
                 </div>
-                <p className="text-ns-faint text-xs mt-1">{c.platform} · {c.skill}</p>
+                <p className="text-ns-faint text-xs mt-1">{courseUrl ? `${c.platform} · ${c.skill}` : c.skill}</p>
                 {!courseUrl && <p className="text-ns-faint text-xs mt-1">Khóa học cụ thể chưa được xác minh.</p>}
               </div>
               {courseUrl ? (
@@ -698,15 +676,6 @@ export default function AnalysisDetailPage() {
                   className="flex items-center gap-1 border border-blue-500/30 text-blue-400 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-500/10 cursor-pointer flex-shrink-0"
                 >
                   Xem khoá học <ExternalLink size={12} />
-                </a>
-              ) : catalogUrl ? (
-                <a
-                  href={catalogUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 border border-blue-500/30 text-blue-400 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex-shrink-0"
-                >
-                  Duyệt danh mục <ExternalLink size={12} />
                 </a>
               ) : (
                 <span className="text-ns-faint text-xs flex-shrink-0" title="Chưa có đường dẫn khóa học được xác minh">

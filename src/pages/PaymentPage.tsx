@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { getBillingMe, getBillingOrder } from '../lib/api/billing'
 import type { BillingOrder } from '../lib/api/billing'
 import { fetchMe } from '../lib/api/auth'
@@ -53,7 +54,10 @@ export default function PaymentPage() {
     return () => { window.removeEventListener('focus', onFocus); window.clearInterval(timer) }
   }, [orderId, refresh, isAuthenticated])
 
-  return <main className="max-w-xl mx-auto p-8 text-center space-y-5">
+  return <main className="relative max-w-xl mx-auto px-8 pb-8 pt-16 text-center space-y-5">
+    <Link to={isAuthenticated ? '/dashboard' : '/'} aria-label="Đóng trang thanh toán" className="absolute right-4 top-4 rounded-lg border border-ns p-2 text-ns-secondary hover:text-ns-primary hover:bg-ns-raised focus-visible:outline-2 focus-visible:outline-blue-500">
+      <X size={20} aria-hidden="true" />
+    </Link>
     <h1 className="font-heading text-3xl font-bold text-ns-primary">Trạng thái thanh toán</h1>
     {!USE_API || !orderId ? (
       <p className="text-ns-secondary">Thanh toán chưa mở. Trang này không tạo QR, nhận tiền hoặc tự cấp quyền.</p>
