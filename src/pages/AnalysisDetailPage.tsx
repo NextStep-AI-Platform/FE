@@ -22,6 +22,24 @@ import type { DocumentInput, ScanRecord } from '../types'
 
 type Tab = 'overview' | 'ats' | 'compatibility' | 'improve' | 'jobs' | 'courses'
 
+function availableScore(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
+    ? value
+    : null
+}
+
+function safeCourseUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    const allowedHosts = ['udemy.com', 'coursera.org', 'pluralsight.com', 'edx.org', 'microsoft.com']
+    const trustedHost = allowedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))
+    return url.protocol === 'https:' && !url.username && !url.password && trustedHost ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 function MetricTooltip({ label, tooltipKey }: { label: string; tooltipKey: string }) {
   return (
     <span className="inline-flex items-center gap-1 group relative">
@@ -207,6 +225,8 @@ export default function AnalysisDetailPage() {
 
   const result = scan.result
   const scoreInfo = getScoreLabel(result.scores.overall)
+  const missingSubscores = [result.scores.ats, result.scores.keyword, result.scores.experience, result.scores.presentation]
+    .every(value => availableScore(value) === null)
   const matchingScans = (USE_API ? remoteHistory : scans)
     .filter(item => item.id !== scan.id && item.overallScore >= 70)
     .sort((left, right) => {
@@ -291,21 +311,29 @@ export default function AnalysisDetailPage() {
               { key: 'keyword', label: 'Độ khớp từ khóa', value: result.scores.keyword },
               { key: 'experience', label: 'Phù hợp kinh nghiệm', value: result.scores.experience },
               { key: 'presentation', label: 'Trình bày CV', value: result.scores.presentation },
-            ].map(({ key, label, value }) => (
-              <div key={key}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-ns-muted">
-                    <MetricTooltip label={label} tooltipKey={key} />
-                  </span>
-                  <span className="text-ns-primary font-medium">{value}%</span>
+            ].map(({ key, label, value }) => {
+              const score = availableScore(value)
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-ns-muted">
+                      <MetricTooltip label={label} tooltipKey={key} />
+                    </span>
+                    <span className="text-ns-primary font-medium">{score === null ? 'Chưa có điểm' : `${score}%`}</span>
+                  </div>
+                  <div className="h-2 bg-ns-raised rounded-full">
+                    {score !== null && <div className={`h-full ${getScoreBarColor(score)} rounded-full`} style={{ width: `${score}%` }} />}
+                  </div>
                 </div>
-                <div className="h-2 bg-ns-raised rounded-full">
-                  <div className={`h-full ${getScoreBarColor(value)} rounded-full`} style={{ width: `${value}%` }} />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
+        {missingSubscores && (
+          <p className="mt-4 text-ns-muted text-sm" role="status">
+            Báo cáo này chưa lưu điểm thành phần. Vui lòng phân tích lại sau khi hệ thống được cập nhật.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-1 bg-ns-card border border-ns rounded-xl p-1 overflow-x-auto">
@@ -332,13 +360,18 @@ export default function AnalysisDetailPage() {
               { label: 'Phù hợp kinh nghiệm', value: result.scores.experience, tile: 'metric-tile-exp' },
               { label: 'Trình bày CV', value: result.scores.presentation, tile: 'metric-tile-pres' },
             ].map(({ label, value, tile }) => {
-              const info = getScoreLabel(value)
+              const score = availableScore(value)
+              const info = score === null ? null : getScoreLabel(score)
               return (
                 <div key={label} className={`metric-tile bg-ns-card border border-ns rounded-2xl p-4 text-center shadow-card ${tile}`}>
                   <p className="text-ns-muted text-xs mb-2 font-medium">{label}</p>
-                  <span className={`font-heading font-bold text-2xl keep-accent ${info.color}`}>{value}</span>
-                  <span className="text-ns-faint text-sm">/100</span>
-                  <div className={`mt-2 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${info.bg} ${info.color}`}>{info.label}</div>
+                  {info ? (
+                    <>
+                      <span className={`font-heading font-bold text-2xl keep-accent ${info.color}`}>{score}</span>
+                      <span className="text-ns-faint text-sm">/100</span>
+                      <div className={`mt-2 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${info.bg} ${info.color}`}>{info.label}</div>
+                    </>
+                  ) : <span className="text-ns-faint text-sm">Chưa có điểm</span>}
                 </div>
               )
             })}
@@ -421,8 +454,14 @@ export default function AnalysisDetailPage() {
           <div className="bg-ns-card border border-ns rounded-2xl p-6 shadow-card space-y-4 section-panel">
             <div className="text-center pb-4 border-b border-ns-sub">
               <p className="text-ns-muted text-sm mb-2">Điểm ATS</p>
-              <span className="font-heading font-bold keep-accent text-blue-400 text-6xl">{result.scores.ats}</span>
-              <span className="text-ns-faint">/100</span>
+              {availableScore(result.scores.ats) === null ? (
+                <span className="text-ns-faint text-sm">Chưa có điểm ATS cho báo cáo này</span>
+              ) : (
+                <>
+                  <span className="font-heading font-bold keep-accent text-blue-400 text-6xl">{result.scores.ats}</span>
+                  <span className="text-ns-faint">/100</span>
+                </>
+              )}
               <p className="text-ns-muted text-xs mt-3">Mức CV vượt qua hệ thống lọc tự động</p>
             </div>
           </div>
@@ -457,10 +496,10 @@ export default function AnalysisDetailPage() {
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3">
             <span className="keep-accent bg-blue-600/15 text-blue-400 border border-blue-500/20 px-4 py-2 rounded-xl text-sm font-semibold">
-              Điểm từ khóa: {result.scores.keyword}/100
+              Điểm từ khóa: {availableScore(result.scores.keyword) === null ? 'Chưa có điểm' : `${result.scores.keyword}/100`}
             </span>
             <span className="keep-accent bg-purple-600/15 text-purple-400 border border-purple-500/20 px-4 py-2 rounded-xl text-sm font-semibold">
-              Điểm kinh nghiệm: {result.scores.experience}/100
+              Điểm kinh nghiệm: {availableScore(result.scores.experience) === null ? 'Chưa có điểm' : `${result.scores.experience}/100`}
             </span>
           </div>
           <div className="grid md:grid-cols-2 gap-5">
@@ -618,7 +657,9 @@ export default function AnalysisDetailPage() {
             <div className="bg-ns-card border border-ns rounded-2xl p-8 text-center">
               <p className="text-ns-muted text-sm">Chưa có khóa học phù hợp được đề xuất.</p>
             </div>
-          ) : result.courses.map(c => (
+          ) : result.courses.map(c => {
+            const courseUrl = safeCourseUrl(c.url)
+            return (
             <div key={c.title} className="bg-ns-card border border-ns rounded-xl p-5 flex items-start gap-4 shadow-card">
               <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <BookOpen size={18} className="text-orange-400" />
@@ -635,16 +676,23 @@ export default function AnalysisDetailPage() {
                 </div>
                 <p className="text-ns-faint text-xs mt-1">{c.platform} · {c.skill} · ⭐ {c.rating}</p>
               </div>
-              <a
-                href={c.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 border border-blue-500/30 text-blue-400 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-500/10 cursor-pointer flex-shrink-0"
-              >
-                Xem khoá học <ExternalLink size={12} />
-              </a>
+              {courseUrl ? (
+                <a
+                  href={courseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 border border-blue-500/30 text-blue-400 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-500/10 cursor-pointer flex-shrink-0"
+                >
+                  Xem khoá học <ExternalLink size={12} />
+                </a>
+              ) : (
+                <span className="text-ns-faint text-xs flex-shrink-0" title="Chưa có đường dẫn khóa học được xác minh">
+                  Chưa có liên kết
+                </span>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
