@@ -7,6 +7,7 @@ import type {
   ScanRecord,
 } from '../../types'
 import { apiRequest } from './client'
+import { normalizeCv } from '../cvStructured'
 import { isAnalysisReportV2, parseCompatibleAnalysisReport } from '../../types/reportV2'
 
 interface RawDocumentInput {
@@ -16,6 +17,9 @@ interface RawDocumentInput {
   mimeType?: string | null
   textContent?: string | null
   fileId?: string | null
+  templateId?: string | null
+  structured?: unknown
+  sourcePostingId?: string | null
 }
 
 interface RawScanConfig {
@@ -25,6 +29,7 @@ interface RawScanConfig {
   experienceFrom?: number | null
   experienceTo?: number | null
   minExperienceMonths?: number | null
+  location?: string | null
 }
 
 interface RawAnalysisListItem {
@@ -62,12 +67,15 @@ export interface AnalysisListItem {
 
 function normalizeDocumentInput(input: RawDocumentInput): DocumentInput {
   return {
-    mode: input.mode === 'file' ? 'file' : 'text',
+    mode: input.mode === 'file' || input.mode === 'template' || input.mode === 'auto' ? input.mode : 'text',
     ...(input.fileName != null ? { fileName: input.fileName } : {}),
     ...(input.fileSize != null ? { fileSize: input.fileSize } : {}),
     ...(input.mimeType != null ? { mimeType: input.mimeType } : {}),
     ...(input.textContent != null ? { textContent: input.textContent } : {}),
     ...(input.fileId != null ? { fileId: input.fileId } : {}),
+    ...(input.templateId != null ? { templateId: input.templateId } : {}),
+    ...(input.structured != null ? { structured: normalizeCv(input.structured) } : {}),
+    ...(input.sourcePostingId != null ? { sourcePostingId: input.sourcePostingId } : {}),
   }
 }
 
@@ -83,6 +91,7 @@ function normalizeConfig(config: RawScanConfig): ScanConfig {
     ...(config.minExperienceMonths != null
       ? { minExperienceMonths: config.minExperienceMonths }
       : {}),
+    ...(config.location != null ? { location: config.location } : {}),
   }
 }
 

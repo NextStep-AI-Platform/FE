@@ -18,11 +18,16 @@ export async function createScan(payload: {
   config: ScanConfig;
   cvFile?: File;
   jdFile?: File;
+  searchContext?: Record<string, unknown>;
 }): Promise<{ id: string; status: string }> {
   const formData = new FormData();
   if (payload.cv.mode === 'file') {
     if (!payload.cvFile) throw new Error('CV file is required');
     formData.append('cv_file', payload.cvFile);
+  } else if (payload.cv.mode === 'template') {
+    if (!payload.cv.structured) throw new Error('CV template is empty');
+    formData.append('cv_structured_json', JSON.stringify(payload.cv.structured));
+    if (payload.cv.templateId) formData.append('cv_template_id', payload.cv.templateId);
   } else if (payload.cv.textContent?.trim()) {
     formData.append('cv_text', payload.cv.textContent.trim());
   } else {
@@ -32,10 +37,19 @@ export async function createScan(payload: {
   if (payload.jd.mode === 'file') {
     if (!payload.jdFile) throw new Error('JD file is required');
     formData.append('jd_file', payload.jdFile);
+  } else if (payload.jd.mode === 'auto') {
+    if (!payload.jd.sourcePostingId) throw new Error('Select a job description');
+    formData.append('jd_source_posting_id', payload.jd.sourcePostingId);
+    if (payload.searchContext) {
+      formData.append('jd_search_context_json', JSON.stringify(payload.searchContext));
+    }
   } else if (payload.jd.textContent?.trim()) {
     formData.append('jd_text', payload.jd.textContent.trim());
   } else {
     throw new Error('Job description text is required');
+  }
+  if (payload.config.location?.trim()) {
+    formData.append('config_location', payload.config.location.trim());
   }
   formData.append('config_company', payload.config.company || '');
   formData.append('config_role', payload.config.role || '');

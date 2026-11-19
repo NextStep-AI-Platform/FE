@@ -1,9 +1,11 @@
+import type { CvRevisionResponse, CvStructured } from './cvStructured'
+
 export type ScoreLevel = 'excellent' | 'good' | 'average' | 'poor'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type InterviewMode = 'text' | 'voice'
 export type PlanType = 'free' | 'premium' | 'vip'
 export type HistoryItemType = 'scan' | 'interview'
-export type DocumentInputMode = 'file' | 'text'
+export type DocumentInputMode = 'file' | 'text' | 'template' | 'auto'
 
 export interface User {
   id: string
@@ -38,6 +40,11 @@ export interface DocumentInput {
   mimeType?: string
   textContent?: string
   fileId?: string
+  /** cv: mode template */
+  templateId?: string
+  structured?: CvStructured
+  /** jd: mode auto */
+  sourcePostingId?: string
 }
 
 export type ExperienceUnit = 'month' | 'year'
@@ -46,6 +53,7 @@ export interface ScanConfig {
   company: string
   industry?: string
   role?: string
+  location?: string
   /** @deprecated Dùng jdMinExperience + jdMinExperienceUnit */
   experienceFrom?: number
   /** @deprecated Dùng jdMinExperience + jdMinExperienceUnit */
@@ -187,6 +195,8 @@ export interface ScanRecord {
   jdInput: DocumentInput
   config: ScanConfig
   result: CVAnalysisResult
+  /** Mock mode only: demo improved-CV proposal. */
+  cvRevision?: CvRevisionResponse
 }
 
 export interface CVFileRecord {
@@ -286,3 +296,9 @@ export type {
   RequirementMatchV2,
   ReportEvidenceV2,
 } from './reportV2'
+export type {
+  CvStructured,
+  CvChange,
+  CvDecision,
+  CvRevisionResponse,
+} from './cvStructured'
