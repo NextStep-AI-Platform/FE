@@ -12,6 +12,8 @@ import CVScanPage from './pages/CVScanPage'
 import AnalysisListPage from './pages/AnalysisListPage'
 import AnalysisDetailPage from './pages/AnalysisDetailPage'
 import MockInterviewPage from './pages/MockInterviewPage'
+import InterviewV1Page from './pages/InterviewV1Page'
+import { USE_API } from './lib/config'
 import PricingPage from './pages/PricingPage'
 import PaymentPage from './pages/PaymentPage'
 import ProfilePage from './pages/ProfilePage'
@@ -52,7 +54,7 @@ export default function App() {
           <Route path="/cv-scan" element={<CVScanPage />} />
           <Route path="/analysis" element={<AnalysisListPage />} />
           <Route path="/analysis/:id" element={<AnalysisDetailPage />} />
-          <Route path="/mock-interview" element={<MockInterviewPage />} />
+          <Route path="/mock-interview" element={USE_API ? <InterviewV1Page /> : <MockInterviewPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
