@@ -130,6 +130,7 @@ export default function InterviewV1Page() {
         {session.status === 'awaiting_confirmation' && <><label className="block">Kiểm tra và sửa transcript<textarea className="block w-full mt-1 rounded border border-ns bg-ns-page p-2 min-h-32" value={draft} onChange={e => setDraft(e.target.value)} /></label><button className="rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50" disabled={busy || !draft.trim()} onClick={() => void run(() => interviewV1.confirm(session.id, session.questionNumber!, draft.trim(), session.transcriptRevision!))}>Xác nhận câu trả lời</button></>}
         {['created', 'preparing_next', 'reporting', 'transcribing'].includes(session.status) && <button className="text-blue-500" disabled={busy} onClick={() => void run(() => interviewV1.resume(session.id))}>Cập nhật trạng thái</button>}
         {session.status === 'completed' && <button className="text-blue-500" onClick={() => void openReport(session.id)}>Xem báo cáo</button>}
+        {session.status === 'failed' && <p role="alert" className="text-red-500">Phiên chưa thể hoàn tất. Không tạo phiên mới nếu bạn đang cần đối soát lượt; hãy liên hệ nhóm vận hành.</p>}
         {!terminal.has(session.status) && <button className="ml-3 text-red-500" disabled={busy} onClick={() => { discard.current = true; stopRecording(); void run(() => interviewV1.abandon(session.id)) }}>Kết thúc phiên</button>}
         <p className="text-xs text-ns-muted">Transcript xóa sau {availability.transcriptTtlHours} giờ; báo cáo lưu trong tài khoản cho tới khi xóa tài khoản.</p>
       </section>}
