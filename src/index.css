@@ -387,3 +387,17 @@ html.light .gradient-text {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   }
 }
+
+
+/* Print only the CV paper (improved CV tab / builder preview). */
+@media print {
+  body * { visibility: hidden !important; }
+  .cv-print, .cv-print * { visibility: visible !important; }
+  .cv-print {
+    position: absolute; left: 0; top: 0; width: 100%;
+    box-shadow: none !important; border-radius: 0 !important; padding: 16mm !important;
+  }
+  .cv-print .cv-hl, .cv-print mark { background: transparent !important; }
+  .no-print { display: none !important; }
+  @page { size: A4; margin: 0; }
+}
