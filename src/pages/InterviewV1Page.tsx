@@ -95,7 +95,15 @@ export default function InterviewV1Page() {
       setTextFallback(textOnly)
       await refresh()
     } catch (e) {
-      setError(e instanceof ApiError ? `${e.code}: ${e.message}` : 'Không dùng được micro. Chọn chế độ trả lời bằng chữ để tiếp tục; chưa trừ lượt phỏng vấn.')
+      if (e instanceof ApiError && e.code === 'RATE_LIMITED') {
+        const seconds = Number((e.details as { retryAfterSeconds?: number } | undefined)?.retryAfterSeconds)
+        const wait = seconds > 0
+          ? seconds >= 3600 ? `${Math.ceil(seconds / 3600)} giờ` : `${Math.ceil(seconds / 60)} phút`
+          : 'ít phút'
+        setError(`Đã có quá nhiều lần thử bắt đầu phỏng vấn. Vui lòng thử lại sau khoảng ${wait}; lần thử này chưa trừ lượt VIP.`)
+      } else {
+        setError(e instanceof ApiError ? `${e.code}: ${e.message}` : 'Không dùng được micro. Chọn chế độ trả lời bằng chữ để tiếp tục; chưa trừ lượt phỏng vấn.')
+      }
     } finally { setBusy(false) }
   }
 

@@ -111,7 +111,7 @@ export async function apiRequest<T>(
       detailCode ?? body.code ?? 'UNKNOWN',
       detailMessage ?? body.message ?? res.statusText,
       res.status,
-      (typeof detail === 'object' && detail ? detail.details : undefined) ?? body.details,
+      (typeof detail === 'object' && detail ? detail.details ?? detail : undefined) ?? body.details,
     );
   }
 
