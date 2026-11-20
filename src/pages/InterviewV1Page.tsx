@@ -45,7 +45,17 @@ export default function InterviewV1Page() {
   const run = async (action: () => Promise<InterviewSessionV1>) => {
     setBusy(true); setError('')
     try { setSession(await action()); await refresh() }
-    catch (e) { setError(e instanceof ApiError ? `${e.code}: ${e.message}` : 'Thao tác thất bại. Vui lòng thử lại.') }
+    catch (e) {
+      // The server can recover an unsuccessful upload to "preparing" while the
+      // browser still holds the preceding "transcribing" snapshot.
+      try { await refresh() } catch { /* The normal poll can retry the refresh. */ }
+      if (e instanceof ApiError && e.code === 'STT_UNAVAILABLE') {
+        setTextFallback(true)
+        setError('Không chuyển được ghi âm thành chữ. Bạn có thể nhập câu trả lời bằng chữ cho câu hỏi này khi bộ đếm chuẩn bị về 0; không cần bắt đầu phiên mới.')
+      } else {
+        setError(e instanceof ApiError ? `${e.code}: ${e.message}` : 'Thao tác thất bại. Vui lòng thử lại.')
+      }
+    }
     finally { setBusy(false) }
   }
 
