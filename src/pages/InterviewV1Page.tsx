@@ -136,6 +136,15 @@ export default function InterviewV1Page() {
 
   const answeredCount = session?.answers.length ?? 0
   const currentQuestionAnswered = session?.answers.some(answer => answer.questionNumber === session.questionNumber) ?? false
+  const openNewSession = () => {
+    if (!session) return
+    setRole(session.targetRole)
+    setDifficulty(session.difficulty)
+    setConsent(false)
+    setSession(null)
+    setReport(null)
+    setError('')
+  }
 
   return <main className="interview-chat mx-auto max-w-5xl px-4 py-6 text-ns-primary sm:px-6 sm:py-8">
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
@@ -210,11 +219,11 @@ export default function InterviewV1Page() {
                 </div>
               </header>
 
-              <div ref={chatList} role="log" aria-label="Hội thoại phỏng vấn" aria-relevant="additions" className="min-h-80 max-h-[55vh] space-y-5 overflow-y-auto bg-ns-page px-4 py-6 sm:px-6">
-                <div className="flex items-end gap-2.5">
+              <div ref={chatList} role="log" aria-label="Hội thoại phỏng vấn" aria-relevant="additions" className={`${terminal.has(session.status) ? '' : 'min-h-80'} max-h-[55vh] space-y-5 overflow-y-auto bg-ns-page px-4 py-6 sm:px-6`}>
+                {(!['failed', 'abandoned'].includes(session.status) || answeredCount > 0) && <div className="flex items-end gap-2.5">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><Bot size={16} aria-hidden="true" /></span>
                   <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-ns bg-ns-card px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]">Chào bạn! Chúng ta sẽ cùng luyện 6 câu hỏi cho vị trí <strong>{session.targetRole}</strong>. Bạn có thể sửa bản chép lời trước khi xác nhận.</div>
-                </div>
+                </div>}
                 {session.answers.map(answer => <Fragment key={answer.questionNumber}>
                   <div className="flex items-end gap-2.5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><Bot size={16} aria-hidden="true" /></span>
@@ -224,11 +233,13 @@ export default function InterviewV1Page() {
                     <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm leading-relaxed text-white sm:max-w-[75%]"><p className="mb-1 text-xs font-semibold text-blue-100">Câu trả lời của bạn</p>{answer.transcript ?? 'Nội dung đã được xóa theo thời hạn lưu trữ.'}</div>
                   </div>
                 </Fragment>)}
-                {session.question && !currentQuestionAnswered && <div className="flex items-end gap-2.5">
+                {session.question && !terminal.has(session.status) && !currentQuestionAnswered && <div className="flex items-end gap-2.5">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><Bot size={16} aria-hidden="true" /></span>
                   <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-ns bg-ns-card px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]"><p className="mb-1 text-xs font-semibold text-blue-400 keep-accent">Câu {session.questionNumber}/6</p>{session.question}</div>
                 </div>}
                 {['created', 'preparing_next', 'reporting', 'transcribing'].includes(session.status) && <p role="status" className="ml-10 text-sm text-ns-muted">{statusLabels[session.status]}...</p>}
+                {session.status === 'failed' && <div className="flex items-end gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><Bot size={16} aria-hidden="true" /></span><p className="max-w-[85%] rounded-2xl rounded-bl-sm border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-relaxed text-ns-primary sm:max-w-[75%]">Phiên này gặp lỗi và không thể tiếp tục. {answeredCount === 0 ? 'Chưa có câu trả lời nào được ghi nhận.' : `${answeredCount}/6 câu trả lời đã được ghi nhận.`} Hãy kiểm tra lượt còn lại trước khi bắt đầu phiên khác.</p></div>}
+                {session.status === 'abandoned' && <div className="flex items-end gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><Bot size={16} aria-hidden="true" /></span><p className="max-w-[85%] rounded-2xl rounded-bl-sm border border-ns bg-ns-card px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]">Phiên này đã kết thúc và không thể tiếp tục.</p></div>}
                 {session.status === 'completed' && <div className="flex items-end gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><Check size={16} aria-hidden="true" /></span><p className="rounded-2xl rounded-bl-sm border border-ns bg-ns-card px-4 py-3 text-sm">Bạn đã hoàn thành buổi phỏng vấn. Báo cáo đã sẵn sàng.</p></div>}
                 {report && <div className="flex items-start gap-2.5">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><FileText size={16} aria-hidden="true" /></span>
@@ -270,8 +281,8 @@ export default function InterviewV1Page() {
 
                 {['created', 'preparing_next', 'reporting', 'transcribing'].includes(session.status) && <button className="inline-flex items-center gap-2 rounded-lg border border-ns px-3 py-2 text-sm text-ns-secondary hover:bg-ns-raised disabled:opacity-50" disabled={busy} onClick={() => void run(() => interviewV1.resume(session.id))}><RotateCcw size={15} aria-hidden="true" /> Cập nhật trạng thái</button>}
                 {session.status === 'completed' && !report && <button className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-500" onClick={() => void openReport(session.id)}><FileText size={18} aria-hidden="true" /> Xem báo cáo</button>}
-                {session.status === 'failed' && <p role="alert" className="text-sm text-red-500">Phiên chưa thể hoàn tất. Nếu cần đối soát lượt, hãy liên hệ nhóm vận hành trước khi tạo phiên mới.</p>}
-                {session.status === 'abandoned' && <p className="text-sm text-ns-muted">Phiên này đã kết thúc và không thể tiếp tục.</p>}
+                {session.status === 'failed' && <p className="text-xs text-ns-muted">Nếu số lượt không đúng, hãy liên hệ nhóm vận hành để đối soát.</p>}
+                {(session.status === 'failed' || session.status === 'abandoned') && <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-500" onClick={openNewSession}><Bot size={17} aria-hidden="true" /> Bắt đầu phiên mới</button>}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ns pt-3 text-xs text-ns-muted">
                   <span>Transcript xóa sau {availability.transcriptTtlHours} giờ; báo cáo lưu tới khi xóa tài khoản.</span>
                   {!terminal.has(session.status) && <button className="rounded-lg px-2 py-1 text-red-500 hover:bg-red-500/10 disabled:opacity-50" disabled={busy} onClick={() => { if (window.confirm('Kết thúc phiên phỏng vấn này? Bạn sẽ không thể tiếp tục phiên sau khi kết thúc.')) { discard.current = true; stopRecording(); void run(() => interviewV1.abandon(session.id)) } }}>Kết thúc phiên</button>}
